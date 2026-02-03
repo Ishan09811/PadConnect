@@ -19,9 +19,9 @@ fun rememberTransportManager(
     val scope = rememberCoroutineScope()
 
     return remember {
-        val bleTransport = BleTransport(context).apply {
+        val bleTransport = BleTransport(context)/*.apply {
             start()
-        }
+        }*/
 
         val udpTransport = UdpTransport(
             host = udpHost,

@@ -134,8 +134,8 @@ fun GamepadDPad(
                             event.y,
                             sizePx
                         )
-                        transport.send(GamepadEvent("axis", "DPAD_X", x))
-                        transport.send(GamepadEvent("axis", "DPAD_Y", y))
+                        transport.send(GamepadEvent(type ="axis", key = "DPAD_X", value = x))
+                        transport.send(GamepadEvent(type = "axis", key = "DPAD_Y", value = y))
                     }
 
                     MotionEvent.ACTION_UP,
