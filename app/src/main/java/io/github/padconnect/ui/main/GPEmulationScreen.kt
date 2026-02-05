@@ -3,7 +3,6 @@ package io.github.padconnect.ui.main
 
 import android.annotation.SuppressLint
 import android.app.Activity
-import android.view.MotionEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -21,7 +20,9 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInteropFilter
+import androidx.compose.ui.input.pointer.changedToDown
+import androidx.compose.ui.input.pointer.changedToUp
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -87,17 +88,22 @@ fun GamepadButton(
             .size(sizeDp)
             .graphicsLayer { alpha = button.opacity }
             .background(Color.White.copy(alpha = 0.3f), CircleShape)
-            .pointerInteropFilter {
-                when (it.action) {
-                    MotionEvent.ACTION_DOWN ->
-                        transport.send(GamepadEvent("button_down", button.key.name))
-
-                    MotionEvent.ACTION_UP,
-                    MotionEvent.ACTION_CANCEL ->
-                        transport.send(GamepadEvent("button_up", button.key.name))
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        event.changes.forEach { change ->
+                            if (change.changedToDown()) {
+                                transport.send(GamepadEvent("button_down", button.key.name))
+                            }
+                            if (change.changedToUp()) {
+                                transport.send(GamepadEvent("button_up", button.key.name))
+                            }
+                        }
+                    }
                 }
-                true
             }
+
     )
 }
 
@@ -125,27 +131,35 @@ fun GamepadDPad(
                 Color.White.copy(alpha = 0.15f),
                 RoundedCornerShape(16.dp)
             )
-            .pointerInteropFilter { event ->
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN,
-                    MotionEvent.ACTION_MOVE -> {
-                        val (x, y) = InputResolver.resolveDpadDirection(
-                            event.x,
-                            event.y,
-                            sizePx
-                        )
-                        transport.send(GamepadEvent(type ="axis", key = "DPAD_X", value = x))
-                        transport.send(GamepadEvent(type = "axis", key = "DPAD_Y", value = y))
-                    }
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
 
-                    MotionEvent.ACTION_UP,
-                    MotionEvent.ACTION_CANCEL -> {
-                        transport.send(GamepadEvent("axis", "DPAD_X", 0f))
-                        transport.send(GamepadEvent("axis", "DPAD_Y", 0f))
+                        event.changes.forEach { change ->
+                            val id = change.id
+                            val pos = change.position
+
+                            if (change.pressed) {
+                                val (x, y) = InputResolver.resolveDpadDirection(
+                                    pos.x,
+                                    pos.y,
+                                    sizePx
+                                )
+
+                                transport.send(GamepadEvent("axis", "DPAD_X", x))
+                                transport.send(GamepadEvent("axis", "DPAD_Y", y))
+                            }
+
+                            if (change.changedToUp()) {
+                                transport.send(GamepadEvent("axis", "DPAD_X", 0f))
+                                transport.send(GamepadEvent("axis", "DPAD_Y", 0f))
+                            }
+                        }
                     }
                 }
-                true
             }
+
     ) {
         DPadVisual()
     }
