@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -18,7 +19,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -26,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerId
@@ -41,38 +45,134 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import io.github.padconnect.transport.TransportManager
+import io.github.padconnect.utils.AnalogStickElement
 import io.github.padconnect.utils.ButtonElement
 import io.github.padconnect.utils.ControllerLayout
-import io.github.padconnect.utils.DPadElement
-import io.github.padconnect.utils.GamepadEvent
-import io.github.padconnect.utils.TransportManager
+import io.github.padconnect.viewmodel.GPEmulationViewModel
 import kotlin.math.roundToInt
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun GPEmulationScreen(
     layout: ControllerLayout,
-    transport: TransportManager
+    viewModel: GPEmulationViewModel
 ) {
+    val lastLatency by viewModel.lastLatency.collectAsState()
+    val controlPointers = remember { mutableSetOf<PointerId>() }
+    val buttonBounds = remember { mutableStateMapOf<ButtonElement, Rect>() }
+    val activeButtonPointers = remember { mutableStateMapOf<PointerId, ButtonElement>() }
     FullScreenEffect()
-
     BoxWithConstraints(
-        modifier = Modifier.fillMaxSize().background(Color.Black)
+        modifier = Modifier.fillMaxSize().background(Color.Black).pointerInput(Unit) {
+            awaitPointerEventScope {
+                var cameraPointer: PointerId? = null
+                var lastPos = Offset.Zero
+                var currentVelocityX = 0f
+                var currentVelocityY = 0f
+                val sensitivity = 0.02f
+
+                while (true) {
+                    val event = awaitPointerEvent()
+
+                    event.changes.forEach { change ->
+                        if (change.changedToDown()) {
+                            val hit = buttonBounds.entries
+                                .firstOrNull { it.value.contains(change.position) }
+                                ?.key
+
+                            if (hit != null) {
+                                activeButtonPointers[change.id] = hit
+                                viewModel.transport?.setButton(hit.key.id, true)
+                                controlPointers.add(change.id)
+                                return@forEach
+                            }
+                        }
+
+                        if (change.pressed && activeButtonPointers.containsKey(change.id)) {
+                            val oldButton = activeButtonPointers[change.id]
+
+                            val hit = buttonBounds.entries
+                                .firstOrNull { it.value.contains(change.position) }
+                                ?.key
+
+                            if (hit != oldButton) {
+                                hit?.let {
+                                    oldButton?.let {
+                                        viewModel.transport?.setButton(it.key.id, false)
+                                    }
+                                    viewModel.transport?.setButton(it.key.id, true)
+                                }
+
+                                if (hit != null) {
+                                    activeButtonPointers[change.id] = hit
+                                }
+                            }
+
+                            return@forEach
+                        }
+
+                        if (change.changedToUp()) {
+                            if (activeButtonPointers.containsKey(change.id)) {
+                                activeButtonPointers[change.id]?.let {
+                                    viewModel.transport?.setButton(it.key.id, false)
+                                }
+                                activeButtonPointers.remove(change.id)
+                                controlPointers.remove(change.id)
+                                return@forEach
+                            }
+                        }
+
+                        if (cameraPointer == null && change.pressed && !controlPointers.contains(change.id)) {
+                            cameraPointer = change.id
+                            lastPos = change.position
+                        }
+
+                        if (change.id == cameraPointer && change.pressed) {
+                            val delta = change.position - lastPos
+                            lastPos = change.position
+
+                            currentVelocityX += delta.x * sensitivity
+                            currentVelocityY -= delta.y * sensitivity
+
+                            currentVelocityX = currentVelocityX.coerceIn(-1f, 1f)
+                            currentVelocityY = currentVelocityY.coerceIn(-1f, 1f)
+
+                            viewModel.transport?.setRightAxis(
+                                currentVelocityX,
+                                currentVelocityY
+                            )
+                        }
+
+                        if (change.id == cameraPointer && !change.pressed) {
+                            cameraPointer = null
+                            currentVelocityX = 0f
+                            currentVelocityY = 0f
+                            viewModel.transport?.setRightAxis(0f, 0f)
+                        }
+                    }
+                }
+            }
+        }
     ) {
+        Text(text = "${lastLatency?.roundToInt()}ms", modifier = Modifier.align(Alignment.TopStart).padding(start = 25.dp), color = Color.White)
         layout.elements.forEach { element ->
             when (element) {
                 is ButtonElement -> GamepadButton(
+                    modifier = Modifier,
                     button = element,
-                    transport = transport,
                     screenWidth = maxWidth,
-                    screenHeight = maxHeight
+                    screenHeight = maxHeight,
+                    buttonBounds = buttonBounds,
+                    isPressed = activeButtonPointers.containsValue(element)
                 )
 
-                is DPadElement -> GamepadDPad(
+                is AnalogStickElement -> AnalogStick(
                     dpad = element,
-                    transport = transport,
+                    transport = viewModel.transport,
                     screenWidth = maxWidth,
-                    screenHeight = maxHeight
+                    screenHeight = maxHeight,
+                    controlPointers
                 )
             }
         }
@@ -82,40 +182,39 @@ fun GPEmulationScreen(
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun GamepadButton(
+    modifier: Modifier,
     button: ButtonElement,
-    transport: TransportManager,
     screenWidth: Dp,
-    screenHeight: Dp
+    screenHeight: Dp,
+    buttonBounds: MutableMap<ButtonElement, Rect>,
+    isPressed: Boolean = false
 ) {
     val sizeDp = screenWidth * button.size
-    var background by remember { mutableStateOf(Color.White.copy(alpha = 0.3f)) }
+
+    val density = LocalDensity.current
+    val screenWidthPx = with(density) { screenWidth.toPx() }
+    val screenHeightPx = with(density) { screenHeight.toPx() }
+
+    val sizePx = screenWidthPx * button.size
+    val xPx = screenWidthPx * button.x - sizePx / 2f
+    val yPx = screenHeightPx * button.y - sizePx / 2f
+
+    buttonBounds[button] = Rect(
+        xPx,
+        yPx,
+        xPx + sizePx,
+        yPx + sizePx
+    )
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .offset(
                 x = screenWidth * button.x - sizeDp / 2,
                 y = screenHeight * button.y - sizeDp / 2
             )
             .size(sizeDp)
             .graphicsLayer { alpha = button.opacity }
-            .background(background, CircleShape)
-            .pointerInput(Unit) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        event.changes.forEach { change ->
-                            if (change.changedToDown()) {
-                                transport.send(GamepadEvent("button_down", button.key.name))
-                                background = Color.Transparent
-                            }
-                            if (change.changedToUp()) {
-                                transport.send(GamepadEvent("button_up", button.key.name))
-                                background = Color.White.copy(alpha = 0.3f)
-                            }
-                        }
-                    }
-                }
-            },
+            .background(if (!isPressed) Color.White.copy(alpha = 0.3f) else Color.Transparent, CircleShape),
         contentAlignment = Alignment.Center
     ) {
         GamepadButtonLabel(button.key.name)
@@ -125,11 +224,12 @@ fun GamepadButton(
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun GamepadDPad(
-    dpad: DPadElement,
-    transport: TransportManager,
+fun AnalogStick(
+    dpad: AnalogStickElement,
+    transport: TransportManager?,
     screenWidth: Dp,
-    screenHeight: Dp
+    screenHeight: Dp,
+    controlPointers: MutableSet<PointerId>
 ) {
     val sizeDp = screenWidth * dpad.size
     val sizePx = with(LocalDensity.current) { sizeDp.toPx() }
@@ -154,6 +254,7 @@ fun GamepadDPad(
                         event.changes.forEach { change ->
                             if (change.pressed && activePointer == null) {
                                 activePointer = change.id
+                                controlPointers.add(change.id)
                             }
 
                             if (change.id == activePointer && change.pressed) {
@@ -170,16 +271,15 @@ fun GamepadDPad(
                                 val x = (clamped.x / radius).coerceIn(-1f, 1f)
                                 val y = (-clamped.y / radius).coerceIn(-1f, 1f)
 
-                                transport.send(GamepadEvent("axis", "DPAD_X", x))
-                                transport.send(GamepadEvent("axis", "DPAD_Y", y))
+                                transport?.setLeftAxis(x, y)
                             }
 
                             if (change.id == activePointer && change.changedToUp()) {
                                 activePointer = null
+                                controlPointers.remove(change.id)
                                 knobOffset = Offset.Zero
 
-                                transport.send(GamepadEvent("axis", "DPAD_X", 0f))
-                                transport.send(GamepadEvent("axis", "DPAD_Y", 0f))
+                                transport?.setLeftAxis(0f, 0f)
                             }
                         }
                     }
@@ -242,25 +342,27 @@ fun FullScreenEffect() {
 @Composable
 fun GamepadButtonLabel(keyName: String) {
     when (keyName) {
-        "A" -> Text("A", style = labelStyle(), color = Color.Black)
-        "B" -> Text("B", style = labelStyle(), color = Color.Black)
-        "X" -> Text("X", style = labelStyle(), color = Color.Black)
-        "Y" -> Text("Y", style = labelStyle(), color = Color.Black)
+        "A" -> Text("A", style = labelStyle(), color = Color.White)
+        "B" -> Text("B", style = labelStyle(), color = Color.White)
+        "X" -> Text("X", style = labelStyle(), color = Color.White)
+        "Y" -> Text("Y", style = labelStyle(), color = Color.White)
 
-        "LB" -> Text("LB", style = smallLabelStyle())
-        "RB" -> Text("RB", style = smallLabelStyle())
+        "LB" -> Text("LB", style = smallLabelStyle(), color = Color.White)
+        "RB" -> Text("RB", style = smallLabelStyle(), color = Color.White)
 
         "START" -> Icon(
             imageVector = Icons.Default.PlayArrow,
+            tint = Color.White,
             contentDescription = "Start"
         )
 
         "SELECT" -> Icon(
             imageVector = Icons.Default.Menu,
+            tint = Color.White,
             contentDescription = "Select"
         )
 
-        else -> Text(keyName, style = smallLabelStyle())
+        else -> Text(keyName, style = smallLabelStyle(), color = Color.White)
     }
 }
 

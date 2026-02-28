@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
 @SuppressLint("UnsafeOptInUsageError")
 @Serializable
 data class ControllerLayout(
-    val name: String,
+    var name: String,
     val elements: List<ControllerElement>
 )
 
@@ -35,7 +35,7 @@ data class ButtonElement(
 @SuppressLint("UnsafeOptInUsageError")
 @Serializable
 @SerialName("dpad")
-data class DPadElement(
+data class AnalogStickElement(
     override val id: String,
     override val x: Float,
     override val y: Float,
@@ -43,7 +43,7 @@ data class DPadElement(
     override val opacity: Float
 ) : ControllerElement()
 
-enum class GamepadKey {
-    A, B, X, Y, LB, RB, START, SELECT
+enum class GamepadKey(val id: Int) {
+    A(0x1000), B(0x2000), X(0x4000), Y(0x8000), L3(0x0040), R3(0x0080), LT(7), RT(8), LB(0x0100), RB(0x0200), START(0x0010), SELECT(0x0020)
 }
 

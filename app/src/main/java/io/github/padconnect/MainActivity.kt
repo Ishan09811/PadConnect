@@ -1,11 +1,10 @@
 package io.github.padconnect
 
 import android.os.Bundle
-import android.widget.Toast
-import android.widget.Toast.LENGTH_SHORT
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -17,7 +16,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,37 +24,35 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import io.github.padconnect.dialogs.AlertDialogHost
 import io.github.padconnect.ui.main.GPEmulationScreen
-import io.github.padconnect.ui.theme.PadConnectTheme
 import io.github.padconnect.ui.main.LayoutsScreen
-import io.github.padconnect.ui.main.rememberTransportManager
-import io.github.padconnect.utils.DiscoveryResult
-import io.github.padconnect.utils.DiscoverySender
+import io.github.padconnect.ui.theme.PadConnectTheme
 import io.github.padconnect.utils.LayoutStorage
+import io.github.padconnect.viewmodel.GPEmulationViewModel
 
 class MainActivity : ComponentActivity() {
+    private val gpEmulationViewModel by viewModels<GPEmulationViewModel>()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             PadConnectTheme {
-                PadConnectApp()
+                PadConnectApp(viewmodel = remember { gpEmulationViewModel })
             }
         }
     }
 }
 
-@PreviewScreenSizes
 @Composable
-fun PadConnectApp() {
+fun PadConnectApp(viewmodel: GPEmulationViewModel) {
     var currentDestination by rememberSaveable {
         mutableStateOf(AppDestinations.HOME)
     }
@@ -92,17 +88,18 @@ fun PadConnectApp() {
                         .fillMaxSize()
                         .padding(innerPadding)
                 ) {
-                    HomeNavGraph(navController)
+                    AlertDialogHost()
+                    HomeNavGraph(navController, viewmodel)
                 }
             }
         }
     } else {
-        HomeNavGraph(navController)
+        HomeNavGraph(navController, viewmodel)
     }
 }
 
 @Composable
-fun HomeNavGraph(navController: NavHostController) {
+fun HomeNavGraph(navController: NavHostController, viewModel: GPEmulationViewModel) {
     val context = LocalContext.current
     
     NavHost(
@@ -130,18 +127,9 @@ fun HomeNavGraph(navController: NavHostController) {
                 LayoutStorage.load(context, layoutName)
             }
 
-            var result: DiscoveryResult? = null
-
-            LaunchedEffect(Unit) {
-                result = DiscoverySender.discoverReceiver()
-                if (result != null) {
-                    Toast.makeText(context, "successfully connected", LENGTH_SHORT).show()
-                }
-            }
-
             GPEmulationScreen(
                 layout = layout!!,
-                transport = rememberTransportManager(result?.host ?: "192.168.1.5", result?.port ?: 8082)
+                viewModel
             )
         }
     }

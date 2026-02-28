@@ -7,8 +7,8 @@ import java.net.DatagramSocket
 import java.net.InetAddress
 
 data class DiscoveryResult(
-    val host: String,
-    val port: Int
+    val host: String?,
+    val port: Int?
 )
 
 object DiscoverySender {
@@ -51,7 +51,7 @@ object DiscoverySender {
             }
 
             null
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         } finally {
             socket.close()

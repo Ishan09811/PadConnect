@@ -13,9 +13,9 @@ object LayoutStorage {
 
     private const val FILE_NAME = "layouts.json"
 
-    fun load(context: Context): List<ControllerLayout> {
+    fun load(context: Context): MutableList<ControllerLayout> {
         val file = File(context.filesDir, FILE_NAME)
-        if (!file.exists()) return emptyList()
+        if (!file.exists()) return mutableListOf()
         return json.decodeFromString(file.readText())
     }
 
@@ -23,7 +23,7 @@ object LayoutStorage {
         return load(context).firstOrNull { it.name == name }
     }
 
-    fun save(context: Context, layouts: List<ControllerLayout>) {
+    fun save(context: Context, layouts: MutableList<ControllerLayout>) {
         val file = File(context.filesDir, FILE_NAME)
         file.writeText(json.encodeToString(layouts))
     }
@@ -35,7 +35,7 @@ object LayoutStorage {
                 ButtonElement(
                     id = "btn_a",
                     x = 0.78f,
-                    y = 0.62f,
+                    y = 0.67f,
                     size = 0.09f,
                     opacity = 0.85f,
                     key = GamepadKey.A
@@ -43,7 +43,7 @@ object LayoutStorage {
                 ButtonElement(
                     id = "btn_b",
                     x = 0.87f,
-                    y = 0.52f,
+                    y = 0.55f,
                     size = 0.09f,
                     opacity = 0.85f,
                     key = GamepadKey.B
@@ -51,7 +51,7 @@ object LayoutStorage {
                 ButtonElement(
                     id = "btn_x",
                     x = 0.69f,
-                    y = 0.52f,
+                    y = 0.55f,
                     size = 0.09f,
                     opacity = 0.85f,
                     key = GamepadKey.X
@@ -59,13 +59,13 @@ object LayoutStorage {
                 ButtonElement(
                     id = "btn_y",
                     x = 0.78f,
-                    y = 0.42f,
+                    y = 0.45f,
                     size = 0.09f,
                     opacity = 0.85f,
                     key = GamepadKey.Y
                 ),
 
-                DPadElement(
+                AnalogStickElement(
                     id = "dpad",
                     x = 0.22f,
                     y = 0.55f,
@@ -74,8 +74,25 @@ object LayoutStorage {
                 ),
 
                 ButtonElement(
+                    id = "btn_lt",
+                    x = 0.10f,
+                    y = 0.15f,
+                    size = 0.12f,
+                    opacity = 0.7f,
+                    key = GamepadKey.LT
+                ),
+                ButtonElement(
+                    id = "btn_rt",
+                    x = 0.90f,
+                    y = 0.15f,
+                    size = 0.12f,
+                    opacity = 0.7f,
+                    key = GamepadKey.RT
+                ),
+
+                ButtonElement(
                     id = "btn_lb",
-                    x = 0.20f,
+                    x = 0.25f,
                     y = 0.18f,
                     size = 0.12f,
                     opacity = 0.7f,
@@ -83,11 +100,28 @@ object LayoutStorage {
                 ),
                 ButtonElement(
                     id = "btn_rb",
-                    x = 0.80f,
+                    x = 0.75f,
                     y = 0.18f,
                     size = 0.12f,
                     opacity = 0.7f,
                     key = GamepadKey.RB
+                ),
+
+                ButtonElement(
+                    id = "btn_l3",
+                    x = 0.42f,
+                    y = 0.25f,
+                    size = 0.07f,
+                    opacity = 0.6f,
+                    key = GamepadKey.L3
+                ),
+                ButtonElement(
+                    id = "btn_r3",
+                    x = 0.58f,
+                    y = 0.25f,
+                    size = 0.07f,
+                    opacity = 0.6f,
+                    key = GamepadKey.R3
                 ),
 
                 ButtonElement(
