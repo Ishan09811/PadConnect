@@ -1,0 +1,42 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up gradle caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-padconnect-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-padconnect-
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android APK
+          path: |
+            ./app/build/outputs/apk/debug/app-debug.apk
