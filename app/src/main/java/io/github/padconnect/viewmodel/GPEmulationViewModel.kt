@@ -16,6 +16,9 @@ class GPEmulationViewModel : ViewModel() {
     private val _lastLatency = MutableStateFlow<Double?>(null)
     val lastLatency: StateFlow<Double?> = _lastLatency
 
+    private val _isTransportConnected = MutableStateFlow(false)
+    val isTransportConnected: StateFlow<Boolean> = _isTransportConnected
+
     private var lastUiUpdate = 0L
     private val uiIntervalNs = 1000_000_000L // 1000ms = 1Hz
 
@@ -30,15 +33,22 @@ class GPEmulationViewModel : ViewModel() {
     }
 
     init {
+        searchReceiver()
+    }
+
+    fun searchReceiver() {
         viewModelScope.launch {
             val result = DiscoverySender.discoverReceiver()
-            val host = result?.host ?: "192.168.1.5"
-            val port = result?.port ?: 8082
-            transport = TransportManager(host, port, onLatencyStatsReceive)
-            withContext(Dispatchers.Main) {
-                Log.i("IP & PORT:", "$host $port")
+            if (result != null && result.host != null && result.port != null) {
+                transport = TransportManager(result.host, result.port, onLatencyStatsReceive)
+                withContext(Dispatchers.Main) {
+                    Log.i("IP & PORT:", "$result.host $result.port")
+                    _isTransportConnected.value = true
+                }
+                transport!!.start()
+            } else {
+                searchReceiver()
             }
-            transport!!.start()
         }
     }
 

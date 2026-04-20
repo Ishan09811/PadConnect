@@ -16,10 +16,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -39,10 +35,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import io.github.padconnect.R
 import io.github.padconnect.dialogs.AlertDialogQueue
 import io.github.padconnect.dialogs.AppDialog
 import io.github.padconnect.utils.ControllerLayout
@@ -91,7 +89,7 @@ fun LayoutsScreen(onLayoutSelected: (ControllerLayout) -> Unit) {
                     )
                 }
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Create Layout")
+                Icon(painter = painterResource(R.drawable.ic_add), contentDescription = "Create Layout")
             }
         }
     ) { padding ->
@@ -181,7 +179,7 @@ private fun LayoutCard(
                 onDismissRequest = { menuExpanded = false }
             ) {
                 DropdownMenuItem(
-                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = "Rename Layout") },
+                    leadingIcon = { Icon(painter = painterResource(R.drawable.ic_edit), contentDescription = "Rename Layout") },
                     text = { Text("Rename") },
                     onClick = {
                         menuExpanded = false
@@ -190,7 +188,7 @@ private fun LayoutCard(
                 )
                 HorizontalDivider()
                 DropdownMenuItem(
-                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = "Delete Layout") },
+                    leadingIcon = { Icon(painter = painterResource(com.github.ishan09811.compose_preferences.R.drawable.ic_delete), contentDescription = "Delete Layout") },
                     text = { Text("Delete") },
                     onClick = {
                         menuExpanded = false

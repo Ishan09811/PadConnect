@@ -29,14 +29,24 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Decode Keystore
+        env:
+          KEYSTORE_ENCODED: ${{ secrets.KEYSTORE }}
+        run: |
+          echo "$KEYSTORE_ENCODED" | base64 --decode > ${{ github.workspace }}/app/ks.jks
+
       - name: Build
+        env:
+          KEYSTORE_PATH: "ks.jks"
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Android APK
           path: |
-            ./app/build/outputs/apk/debug/app-debug.apk
+            ./app/build/outputs/apk/release/app-release.apk

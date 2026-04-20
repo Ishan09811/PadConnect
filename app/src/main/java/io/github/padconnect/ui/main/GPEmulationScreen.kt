@@ -11,9 +11,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -38,6 +35,7 @@ import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -45,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import io.github.padconnect.R
 import io.github.padconnect.transport.TransportManager
 import io.github.padconnect.utils.AnalogStickElement
 import io.github.padconnect.utils.ButtonElement
@@ -351,13 +350,13 @@ fun GamepadButtonLabel(keyName: String) {
         "RB" -> Text("RB", style = smallLabelStyle(), color = Color.White)
 
         "START" -> Icon(
-            imageVector = Icons.Default.PlayArrow,
+            painter = painterResource(R.drawable.ic_play_arrow),
             tint = Color.White,
             contentDescription = "Start"
         )
 
         "SELECT" -> Icon(
-            imageVector = Icons.Default.Menu,
+            painter = painterResource(R.drawable.ic_menu),
             tint = Color.White,
             contentDescription = "Select"
         )

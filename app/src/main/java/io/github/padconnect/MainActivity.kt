@@ -1,29 +1,22 @@
 package io.github.padconnect
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.core.view.WindowCompat
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -34,15 +27,18 @@ import androidx.navigation.navArgument
 import io.github.padconnect.dialogs.AlertDialogHost
 import io.github.padconnect.ui.main.GPEmulationScreen
 import io.github.padconnect.ui.main.LayoutsScreen
-import io.github.padconnect.ui.theme.PadConnectTheme
+import io.github.padconnect.ui.main.SetupScreen
+import io.github.padconnect.ui.settings.AdvancedSettingsScreen
+import io.github.padconnect.ui.settings.SettingsScreen
 import io.github.padconnect.utils.LayoutStorage
+import io.github.padconnect.utils.settings.GlobalConfig
 import io.github.padconnect.viewmodel.GPEmulationViewModel
 
 class MainActivity : ComponentActivity() {
     private val gpEmulationViewModel by viewModels<GPEmulationViewModel>()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
             PadConnectTheme {
                 PadConnectApp(viewmodel = remember { gpEmulationViewModel })
@@ -53,47 +49,60 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun PadConnectApp(viewmodel: GPEmulationViewModel) {
-    var currentDestination by rememberSaveable {
-        mutableStateOf(AppDestinations.HOME)
-    }
-
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val showBottomBar = currentRoute?.startsWith("emulation") != true
+    val selectedDestination =  remember(currentRoute) {
+        AppDestinations.entries.find { it.name == currentRoute } ?: AppDestinations.HOME
+    }
 
-    if (showBottomBar) {
-        NavigationSuiteScaffold(
-            navigationSuiteItems = {
-                AppDestinations.entries.forEach {
-                    item(
-                        icon = { Icon(it.icon, contentDescription = it.label) },
-                        label = { Text(it.label) },
-                        selected = it == currentDestination,
-                        onClick = {
-                            currentDestination = it
-                            navController.popBackStack(
-                                navController.graph.startDestinationId,
-                                false
-                            )
-                        }
-                    )
-                }
+    LaunchedEffect(navController) {
+        navController.addOnDestinationChangedListener { controller, destination, arguments ->
+            Log.d("NAV_DEBUG", "----- Destination Changed -----")
+            Log.d("NAV_DEBUG", "Current Route: ${destination.route}")
+            Log.d("NAV_DEBUG", "Arguments: $arguments")
+
+            controller.previousBackStackEntry?.let {
+                Log.d("NAV_DEBUG", "Previous Route: ${it.destination.route}")
             }
-        ) {
-            Scaffold { innerPadding ->
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                ) {
-                    AlertDialogHost()
-                    HomeNavGraph(navController, viewmodel)
-                }
+
+            Log.d("NAV_DEBUG", "-------------------------------")
+        }
+    }
+
+    val showBottomBar by remember(currentRoute) {
+        derivedStateOf {
+            currentRoute != null && !currentRoute.startsWith("emulation") && !currentRoute.endsWith("settings") && currentRoute != "SETUP"
+        }
+    }
+
+    AlertDialogHost()
+
+    NavigationSuiteScaffold(
+        layoutType = if (showBottomBar) NavigationSuiteType.NavigationBar else NavigationSuiteType.None,
+        navigationSuiteItems = {
+            AppDestinations.entries.forEach {
+                item(
+                    icon = { Icon(painterResource(it.icon), contentDescription = it.label) },
+                    label = { Text(it.label) },
+                    selected = it == selectedDestination,
+                    alwaysShowLabel = false,
+                    onClick = {
+                        if (currentRoute != it.name) {
+                            navController.navigate(it.name) {
+                                popUpTo(AppDestinations.HOME.name) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    }
+                )
             }
         }
-    } else {
+    ) {
         HomeNavGraph(navController, viewmodel)
     }
 }
@@ -104,14 +113,34 @@ fun HomeNavGraph(navController: NavHostController, viewModel: GPEmulationViewMod
     
     NavHost(
         navController = navController,
-        startDestination = "layouts"
+        startDestination = if (GlobalConfig.INITIAL_SETUP_FINISHED.boolean) "HOME" else "SETUP"
     ) {
-        composable("layouts") {
+        composable("HOME") {
             LayoutsScreen(
                 onLayoutSelected = { layout ->
                     navController.navigate("emulation/${layout.name}")
                 }
             )
+        }
+
+        composable("SETUP") {
+            SetupScreen(viewModel, navigateTo = {
+                navController.navigate(it) {
+                    popUpTo("SETUP") {
+                        inclusive = true
+                    }
+                }
+            })
+        }
+
+        composable("SETTINGS") {
+            SettingsScreen(navigateTo = {
+                navController.navigate(it)
+            })
+        }
+
+        composable("advanced_settings") {
+            AdvancedSettingsScreen()
         }
 
         composable(
@@ -137,8 +166,8 @@ fun HomeNavGraph(navController: NavHostController, viewModel: GPEmulationViewMod
 
 enum class AppDestinations(
     val label: String,
-    val icon: ImageVector,
+    val icon: Int,
 ) {
-    HOME("Layouts", Icons.Default.Home),
-    SETTINGS("Settings", Icons.Default.Settings),
+    HOME("Layouts", R.drawable.ic_home),
+    SETTINGS("Settings", com.github.ishan09811.compose_preferences.R.drawable.ic_settings),
 }

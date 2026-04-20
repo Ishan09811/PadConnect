@@ -18,21 +18,21 @@ class TransportManager(
 
     fun setButton(mask: Int, down: Boolean) {
         when {
-            ble?.isAvailable() == true -> ble!!.setButton(mask, down)
+           // ble?.isAvailable() == true -> ble!!.setButton(mask, down)
             wifi?.isAvailable() == true -> wifi!!.setButton(mask, down)
         }
     }
 
     fun setLeftAxis(x: Float, y: Float) {
         when {
-            ble?.isAvailable() == true -> ble!!.setLeftAxis(x, y)
+            //ble?.isAvailable() == true -> ble!!.setLeftAxis(x, y)
             wifi?.isAvailable() == true -> wifi!!.setLeftAxis(x, y)
         }
     }
 
     fun setRightAxis(x: Float, y: Float) {
         when {
-            ble?.isAvailable() == true -> ble!!.setRightAxis(x, y)
+            //ble?.isAvailable() == true -> ble!!.setRightAxis(x, y)
             wifi?.isAvailable() == true -> wifi!!.setRightAxis(x, y)
         }
     }

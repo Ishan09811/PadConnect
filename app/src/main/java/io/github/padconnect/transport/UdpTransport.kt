@@ -1,6 +1,8 @@
 package io.github.padconnect.transport
 
 import io.github.padconnect.utils.GamepadKey
+import io.github.padconnect.utils.settings.GlobalConfig
+import java.io.IOException
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
@@ -28,11 +30,12 @@ class UdpTransport(
 
     private val senderThread = Thread {
         val buffer = ByteBuffer.allocate(20).order(ByteOrder.LITTLE_ENDIAN)
-
-        val intervalNs = 2_000_000L
         var next = System.nanoTime()
 
-        while (isRunning) {
+        while (isRunning && !socket.isClosed) {
+
+            val intervalNs = 1_000_000_000L / GlobalConfig.INPUT_UPDATE_RATE.int
+
             buffer.clear()
 
             synchronized(stateLock) {
@@ -49,9 +52,13 @@ class UdpTransport(
             packet.setData(buffer.array())
             packet.length = buffer.position()
 
-            socket.send(packet)
+            try {
+                socket.send(packet)
+            } catch (_: IOException) {
+                break
+            }
 
-            next += intervalNs
+            next = System.nanoTime() + intervalNs
             val sleep = next - System.nanoTime()
             if (sleep > 0)
                 LockSupport.parkNanos(sleep)
@@ -62,8 +69,13 @@ class UdpTransport(
         val buffer = ByteArray(16)
         val packet = DatagramPacket(buffer, buffer.size)
 
-        while (isRunning) {
-            socket.receive(packet)
+        while (isRunning && !socket.isClosed) {
+            try {
+                socket.receive(packet)
+            } catch(_: IOException) {
+                break
+            }
+
             val bb = ByteBuffer.wrap(packet.data, 0, packet.length)
                 .order(ByteOrder.LITTLE_ENDIAN)
             val sentTime = bb.long
