@@ -1,1 +1,1 @@
-A tool to connect your Android device to your PC and use it as a gamepad.
+A tool to connect your Android device to your PC(Windows Only) and use it as a gamepad.

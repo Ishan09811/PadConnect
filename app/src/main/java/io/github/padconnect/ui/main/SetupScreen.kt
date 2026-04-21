@@ -50,12 +50,12 @@ data class SetupStep(
 @Composable
 fun SetupScreen(viewModel: GPEmulationViewModel? = null, navigateTo: ((String) -> Unit)? = null) {
     val context = LocalContext.current
-    val isTransportConnected by viewModel!!.isTransportConnected.collectAsState(false)
+    val isTransportConnected = true //by viewModel!!.isTransportConnected.collectAsState(false)
 
     val steps = listOf(
         SetupStep(
-            title = "Setup required on your PC",
-            subtitle = "Download PadConnectReceiver on your PC",
+            title = "Setup required on your PC(Windows Only)",
+            subtitle = "Download PadConnectReceiver on your PC(Windows Only)",
             buttonText = "Download Receiver",
             url = "https://github.com/ishan09811/PadConnectReceiver/releases/latest"
         ),
@@ -63,7 +63,7 @@ fun SetupScreen(viewModel: GPEmulationViewModel? = null, navigateTo: ((String) -
             title = "Install Driver",
             subtitle = "Install ViGEm driver (required for controller support)",
             buttonText = "Download ViGEm",
-            url = "https://vigembusdriver.com/download/"
+            url = "https://github.com/nefarius/ViGEmBus/releases/latest"
         ),
         SetupStep(
             title = "Run Receiver",
