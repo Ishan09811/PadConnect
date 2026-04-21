@@ -50,7 +50,7 @@ data class SetupStep(
 @Composable
 fun SetupScreen(viewModel: GPEmulationViewModel? = null, navigateTo: ((String) -> Unit)? = null) {
     val context = LocalContext.current
-    val isTransportConnected = true //by viewModel!!.isTransportConnected.collectAsState(false)
+    val isTransportConnected by viewModel!!.isTransportConnected.collectAsState(false)
 
     val steps = listOf(
         SetupStep(
