@@ -1,5 +1,9 @@
 # PadConnect
 
+<a href="https://discord.gg/BrMAZbEyXs" target="_blank">
+        <img src="https://img.shields.io/discord/1496412688685858846.svg?label=&logo=discord&logoColor=ffffff&color=5865F2&labelColor=404EED">
+    </a>
+
 > **Low latency virtual gamepad** — built with **Kotlin** and **Jetpack Compose**
 
 PadConnect lets your phone act as a **real controller (Xbox 360/DualShock4)** for a PC. It streams gamepad input with very low latency and exposes it on Windows using **ViGEm**.
