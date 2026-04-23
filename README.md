@@ -165,8 +165,7 @@ PadConnectReceiver/
 ---
 
 ## License
-
-[GPL3](https://github.com/Ishan09811/PadConnect/blob/master/LICENSE) License
+This project is licensed under the GNU General Public License v3.0 [(GPL-3.0-only)](https://github.com/Ishan09811/PadConnect/blob/master/LICENSE)
 
 ---
 
