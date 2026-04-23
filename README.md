@@ -166,7 +166,7 @@ PadConnectReceiver/
 
 ## License
 
-[GPL3](https://github.com/Ishan09811/PadConnect/blob/master/LICENSE) License
+[![GPL-3.0-only](https://img.shields.io/badge/License-GPL--3.0--only-blue.svg)](https://spdx.org/licenses/GPL-3.0-only.html)
 
 ---
 
