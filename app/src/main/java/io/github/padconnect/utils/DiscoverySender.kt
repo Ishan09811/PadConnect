@@ -13,14 +13,22 @@ import kotlinx.coroutines.withContext
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
+const val FEATURE_RUMBLE = 1 shl 0
+const val FEATURE_LATENCY = 1 shl 1
 
 data class DiscoveryResult(
     val host: String?,
-    val port: Int?
+    val port: Int,
+    val agreedVersion: Int,
+    val features: Int
 )
 
 object DiscoverySender {
+    const val MIN_SUPPORTED_VERSION = 2
+    private const val CLIENT_VERSION = 2
+
     suspend fun discoverReceiver(
+        clientFeatures: Int,
         timeoutMs: Int = 2000
     ): DiscoveryResult? = withContext(Dispatchers.IO) {
         val socket = DatagramSocket().apply {
@@ -29,7 +37,7 @@ object DiscoverySender {
         }
 
         try {
-            val requestData = "PADCONNECT_DISCOVER".toByteArray()
+            val requestData = "PADCONNECT_DISCOVER:$CLIENT_VERSION:$clientFeatures".toByteArray()
             val requestPacket = DatagramPacket(
                 requestData,
                 requestData.size,
@@ -51,10 +59,29 @@ object DiscoverySender {
             )
 
             if (message.startsWith("PADCONNECT_HERE")) {
-                val port = message.split(":")[1].toInt()
+                val parts = message.split(":")
+
+                val port = parts[1].toInt()
+                val serverVersion = parts[2].toInt()
+                val serverFeatures = parts[3].toInt()
+
+                if (parts.size < 4) {
+                    return@withContext DiscoveryResult(
+                        host = responsePacket.address.hostAddress,
+                        port = port,
+                        agreedVersion = 1,
+                        features = 0
+                    )
+                }
+
+                val agreedVersion = minOf(CLIENT_VERSION, serverVersion)
+                val agreedFeatures = clientFeatures and serverFeatures
+
                 return@withContext DiscoveryResult(
                     host = responsePacket.address.hostAddress,
-                    port = port
+                    port = port,
+                    agreedVersion = agreedVersion,
+                    features = agreedFeatures
                 )
             }
 
@@ -64,5 +91,22 @@ object DiscoverySender {
         } finally {
             socket.close()
         }
+    }
+
+    fun buildClientFeatures(
+        enableRumble: Boolean,
+        showLatency: Boolean
+    ): Int {
+        var features = 0
+
+        if (enableRumble) {
+            features = features or FEATURE_RUMBLE
+        }
+
+        if (showLatency) {
+            features = features or FEATURE_LATENCY
+        }
+
+        return features
     }
 }

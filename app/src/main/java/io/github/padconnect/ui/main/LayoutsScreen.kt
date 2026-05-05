@@ -8,22 +8,31 @@
 
 package io.github.padconnect.ui.main
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -32,9 +41,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +54,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -53,10 +66,13 @@ import io.github.padconnect.dialogs.AlertDialogQueue
 import io.github.padconnect.dialogs.AppDialog
 import io.github.padconnect.utils.ControllerLayout
 import io.github.padconnect.utils.LayoutStorage
+import io.github.padconnect.viewmodel.GPEmulationViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.time.delay
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun LayoutsScreen(onLayoutSelected: (ControllerLayout) -> Unit) {
+fun LayoutsScreen(onLayoutSelected: (ControllerLayout) -> Unit, viewModel: GPEmulationViewModel) {
     val context = LocalContext.current
     val layouts = remember {
         mutableStateListOf<ControllerLayout>().apply {
@@ -80,6 +96,30 @@ fun LayoutsScreen(onLayoutSelected: (ControllerLayout) -> Unit) {
 
     Scaffold(
         modifier = Modifier.windowInsetsPadding(WindowInsets.displayCutout),
+        topBar = {
+            val isActive by viewModel.isReceiverActive.collectAsState()
+            var expanded by remember { mutableStateOf(true) }
+
+            LaunchedEffect(isActive, expanded) {
+                if (expanded) {
+                    delay(3000)
+                    expanded = false
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp),
+                contentAlignment = Alignment.TopStart
+            ) {
+                ReceiverStatusChip(
+                    isActive = isActive,
+                    expanded = expanded,
+                    onExpandRequest = { expanded = true }
+                )
+            }
+        },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
@@ -101,7 +141,6 @@ fun LayoutsScreen(onLayoutSelected: (ControllerLayout) -> Unit) {
             }
         }
     ) { padding ->
-
         if (layouts.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -203,6 +242,46 @@ private fun LayoutCard(
                         onDelete(layout)
                     }
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun ReceiverStatusChip(
+    isActive: Boolean,
+    expanded: Boolean,
+    onExpandRequest: () -> Unit
+) {
+    val color = if (isActive) Color(0xFF4CAF50) else Color(0xFFF44336)
+    val text = if (isActive) "Online" else "Offline"
+
+    Surface(
+        modifier = Modifier
+            .clickable { onExpandRequest() },
+        shape = RoundedCornerShape(50),
+        color = color.copy(alpha = 0.15f)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = if (expanded) 12.dp else 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(color, CircleShape)
+            )
+
+            AnimatedVisibility(visible = expanded) {
+                Row {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text,
+                        color = color,
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
             }
         }
     }

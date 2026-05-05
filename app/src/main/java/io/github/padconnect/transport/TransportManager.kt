@@ -10,6 +10,7 @@ package io.github.padconnect.transport
 
 import android.os.Build
 import io.github.padconnect.PadConnectApplication
+import io.github.padconnect.utils.Logger
 
 class TransportManager(
     udpHost: String,
@@ -22,6 +23,7 @@ class TransportManager(
     init {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) ble = BleTransport(PadConnectApplication.context)
         wifi = UdpTransport(udpHost, udpPort, onLatencyStatsReceive)
+        Logger.info("${this@TransportManager}", "Initialized")
     }
 
     fun setButton(mask: Int, down: Boolean) {
@@ -43,6 +45,10 @@ class TransportManager(
             //ble?.isAvailable() == true -> ble!!.setRightAxis(x, y)
             wifi?.isAvailable() == true -> wifi!!.setRightAxis(x, y)
         }
+    }
+
+    fun isReceiverActive(): Boolean {
+        return (wifi as UdpTransport).isReceiverActive()
     }
 
     fun start() {

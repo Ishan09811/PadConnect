@@ -10,14 +10,28 @@
 package io.github.padconnect.utils.settings
 
 import android.content.Context
+import io.github.padconnect.utils.Logger
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
 
 @Serializable
 data class ConfigModel(
+    // Setup
+    val initialSetupFinished: Boolean = true,
+    // Advanced Settings
+    // (Core)
     val inputUpdateRate: Int = 500,
-    val initialSetupFinished: Boolean = false
+    val enableRumble: Boolean = true,
+    // (Display)
+    val showLatency: Boolean = true,
+    // Theme Settings
+    val themeMode: Int = 0
 )
 
 object GlobalConfig {
@@ -29,21 +43,44 @@ object GlobalConfig {
     private lateinit var configFile: File
     private var config: ConfigModel = ConfigModel()
 
+    private val _configFlow = MutableStateFlow(ConfigModel())
+    val configFlow: StateFlow<ConfigModel> = _configFlow.asStateFlow()
+
+    val themeMode = configFlow.map { it.themeMode }.distinctUntilChanged()
+    val enableRumbleFlow = configFlow.map { it.enableRumble }.distinctUntilChanged()
+    val showLatencyFlow = configFlow.map { it.showLatency }.distinctUntilChanged()
+
     fun init(context: Context) {
         configFile = File(context.getExternalFilesDir(null), "config.json")
 
         if (configFile.exists()) {
             val content = configFile.readText()
             config = json.decodeFromString(content)
+            _configFlow.value = config
         } else {
             save()
         }
+
+        Logger.info("GlobalConfig", "Initialized")
     }
 
     private fun save() {
         configFile.writeText(json.encodeToString(config))
+        _configFlow.value = config
     }
 
+    // Setup
+    object INITIAL_SETUP_FINISHED {
+        var boolean: Boolean
+            get() = config.initialSetupFinished
+            set(value) {
+                config = config.copy(initialSetupFinished = value)
+                save()
+            }
+    }
+
+    // Advanced Settings
+    // (Core)
     object INPUT_UPDATE_RATE {
         var int: Int
             get() = config.inputUpdateRate
@@ -53,11 +90,31 @@ object GlobalConfig {
             }
     }
 
-    object INITIAL_SETUP_FINISHED {
+    object ENABLE_RUMBLE {
         var boolean: Boolean
-            get() = config.initialSetupFinished
+            get() = config.enableRumble
             set(value) {
-                config = config.copy(initialSetupFinished = value)
+                config = config.copy(enableRumble = value)
+                save()
+            }
+    }
+
+    // (Display)
+    object SHOW_LATENCY {
+        var boolean: Boolean
+            get() = config.showLatency
+            set(value) {
+                config = config.copy(showLatency = value)
+                save()
+            }
+    }
+
+    // Theme Settings
+    object THEME_MODE {
+        var int: Int
+            get() = config.themeMode
+            set(value) {
+                config = config.copy(themeMode = value)
                 save()
             }
     }

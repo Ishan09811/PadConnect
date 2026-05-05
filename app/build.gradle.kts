@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.baselineprofile)
 }
 
 android {
@@ -15,8 +16,8 @@ android {
         applicationId = "io.github.padconnect"
         minSdk = 29
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.5"
+        versionCode = 6
+        versionName = "0.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -61,6 +62,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     dependenciesInfo {
@@ -72,6 +74,10 @@ android {
         resources {
             excludes += "/META-INF/*.version"
         }
+    }
+
+    baselineProfile {
+        automaticGenerationDuringBuild = false
     }
 }
 
@@ -91,11 +97,14 @@ dependencies {
     implementation(libs.androidx.compose.runtime)
     implementation(libs.com.github.ishan09811.materialswitch)
     implementation(libs.compose.preferences)
+    implementation(libs.androidx.compose.ui.text.google.fonts)
+    implementation(libs.androidx.profileinstaller)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    "baselineProfile"(project(":baselineprofile"))
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

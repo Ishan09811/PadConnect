@@ -23,6 +23,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -30,14 +32,21 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.github.ishan09811.compose_preferences.core.PreferenceSubtitle
 import com.github.ishan09811.compose_preferences.preference.HomePreference
+import com.github.ishan09811.compose_preferences.preference.RegularPreference
 import com.github.ishan09811.compose_preferences.preference.SingleSelectionDialog
+import com.github.ishan09811.compose_preferences.preference.SwitchPreference
 import io.github.padconnect.R
 import io.github.padconnect.utils.settings.GlobalConfig
+import kotlinx.coroutines.withTimeout
+
+data class IntOption(
+    val value: Int,
+    val label: String
+)
 
 @Preview
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,6 +75,28 @@ fun SettingsScreen(
                     }
                 )
             }
+
+            item(key = "theme_settings") {
+                HomePreference(
+                    title = stringResource(R.string.theme_settings),
+                    icon = { Icon(painterResource(R.drawable.ic_palette), null) },
+                    description = stringResource(R.string.theme_settings_description),
+                    onClick = {
+                        navigateTo?.invoke("theme_settings")
+                    }
+                )
+            }
+
+            item(key = "about") {
+                HomePreference(
+                    title = stringResource(R.string.about),
+                    icon = { Icon(painterResource(R.drawable.ic_info), null) },
+                    description = stringResource(R.string.about_desc),
+                    onClick = {
+                        navigateTo?.invoke("about")
+                    }
+                )
+            }
         }
     }
 }
@@ -75,10 +106,9 @@ fun SettingsScreen(
 @Composable
 fun AdvancedSettingsScreen(
     modifier: Modifier = Modifier,
+    navigateTo: ((String) -> Unit)? = null,
     navigateBack: (() -> Unit)? = null
 ) {
-    val context = LocalContext.current
-
     val topBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     Scaffold(
         modifier = Modifier
@@ -86,8 +116,7 @@ fun AdvancedSettingsScreen(
             .then(modifier), topBar = {
             LargeTopAppBar(title = {
                     Text(
-                        text = stringResource(R.string.advanced_settings),
-                        fontFamily = FontFamily.SansSerif
+                        text = stringResource(R.string.advanced_settings)
                     )
             }, scrollBehavior = topBarScrollBehavior, navigationIcon = {
                 if (navigateBack != null) {
@@ -106,26 +135,225 @@ fun AdvancedSettingsScreen(
                 .fillMaxSize()
                 .padding(contentPadding),
         ) {
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
+            item("core_settings") {
+                RegularPreference(
+                    title = stringResource(R.string.core_settings),
+                    onClick = {
+                        navigateTo?.invoke("core_settings")
+                    }
+                )
             }
 
-            item(key = "input_update_rate") {
-                val hzOptions = listOf(120, 240, 360, 500, 1000)
-                var currentHz by rememberSaveable { mutableIntStateOf(GlobalConfig.INPUT_UPDATE_RATE.int) }
-                SingleSelectionDialog(
-                    currentValue = currentHz,
-                    values = hzOptions,
-                    icon = null,
-                    title = "Input Update Rate",
-                    onValueChange = { value ->
-                        currentHz = value
-                        GlobalConfig.INPUT_UPDATE_RATE.int = value
-                    },
-                    subtitle = { PreferenceSubtitle("How many times per second input is sent") },
-                    valueToText = { "${it}Hz" }
+            item("display_settings") {
+                RegularPreference(
+                    title = stringResource(R.string.display_settings),
+                    onClick = {
+                        navigateTo?.invoke("display_settings")
+                    }
                 )
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CoreSettingsScreen(
+    modifier: Modifier = Modifier,
+    navigateBack: (() -> Unit)? = null
+) {
+    val topBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    Scaffold(
+        modifier = Modifier
+            .nestedScroll(topBarScrollBehavior.nestedScrollConnection)
+            .then(modifier), topBar = {
+            LargeTopAppBar(title = {
+                Text(
+                    text = stringResource(R.string.core_settings)
+                )
+            }, scrollBehavior = topBarScrollBehavior, navigationIcon = {
+                if (navigateBack != null) {
+                    IconButton(onClick = navigateBack) {
+                        Icon(
+                            painterResource(id = R.drawable.ic_keyboard_arrow_left),
+                            contentDescription = null
+                        )
+                    }
+                }
+            })
+        }) { contentPadding ->
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(contentPadding),
+        ) {
+            item(key = "input_update_rate") {
+                IntSetting(
+                    title = "Input update rate",
+                    summary = "How many times per second input is sent",
+                    value = { GlobalConfig.INPUT_UPDATE_RATE.int },
+                    onValueChange = { GlobalConfig.INPUT_UPDATE_RATE.int = it },
+                    labelsId = R.array.input_update_rate_labels,
+                    valuesId = R.array.input_update_rate_values
+                )
+            }
+
+            item(key = "enable_rumble") {
+                SwitchSetting(
+                    title = "Enable Haptic Feedback",
+                    summary = "Uses your phone's vibration to simulate controller rumble (may vary by device)",
+                    value = { GlobalConfig.ENABLE_RUMBLE.boolean },
+                    onValueChange = { GlobalConfig.ENABLE_RUMBLE.boolean = it }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DisplaySettingsScreen(
+    modifier: Modifier = Modifier,
+    navigateBack: (() -> Unit)? = null
+) {
+    val topBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    Scaffold(
+        modifier = Modifier
+            .nestedScroll(topBarScrollBehavior.nestedScrollConnection)
+            .then(modifier), topBar = {
+            LargeTopAppBar(title = {
+                Text(
+                    text = stringResource(R.string.display_settings)
+                )
+            }, scrollBehavior = topBarScrollBehavior, navigationIcon = {
+                if (navigateBack != null) {
+                    IconButton(onClick = navigateBack) {
+                        Icon(
+                            painterResource(id = R.drawable.ic_keyboard_arrow_left),
+                            contentDescription = null
+                        )
+                    }
+                }
+            })
+        }) { contentPadding ->
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(contentPadding),
+        ) {
+            item(key = "show_latency") {
+                SwitchSetting(
+                    title = "Show Latency",
+                    value = { GlobalConfig.SHOW_LATENCY.boolean },
+                    onValueChange = { GlobalConfig.SHOW_LATENCY.boolean = it }
+                )
+            }
+        }
+    }
+}
+
+@Preview
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ThemeSettingsScreen(
+    modifier: Modifier = Modifier,
+    navigateBack: (() -> Unit)? = null
+) {
+    val topBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    Scaffold(
+        modifier = Modifier
+            .nestedScroll(topBarScrollBehavior.nestedScrollConnection)
+            .then(modifier), topBar = {
+            LargeTopAppBar(title = {
+                Text(
+                    text = stringResource(R.string.theme_settings)
+                )
+            }, scrollBehavior = topBarScrollBehavior, navigationIcon = {
+                if (navigateBack != null) {
+                    IconButton(onClick = navigateBack) {
+                        Icon(
+                            painterResource(id = R.drawable.ic_keyboard_arrow_left),
+                            contentDescription = null
+                        )
+                    }
+                }
+            })
+        }) { contentPadding ->
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(contentPadding),
+        ) {
+            item(key = "theme_mode") {
+                IntSetting(
+                    title = "Theme mode",
+                    value = { GlobalConfig.THEME_MODE.int },
+                    onValueChange = { GlobalConfig.THEME_MODE.int = it },
+                    labelsId = R.array.theme_mode_labels,
+                    valuesId = R.array.theme_mode_values
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun IntSetting(
+    title: String,
+    summary: String? = null,
+    value: () -> Int,
+    onValueChange: (Int) -> Unit,
+    labelsId: Int,
+    valuesId: Int
+) {
+    val context = LocalContext.current
+
+    val labels = context.resources.getStringArray(labelsId)
+    val values = context.resources.getIntArray(valuesId)
+
+    val options = remember {
+        values.mapIndexed { index, value ->
+            IntOption(
+                value = value,
+                label = labels.getOrElse(index) { value.toString() }
+            )
+        }
+    }
+
+    var currentValue by rememberSaveable { mutableIntStateOf(value()) }
+
+    SingleSelectionDialog(
+        currentValue = options.first { it.value == currentValue },
+        values = options,
+        icon = null,
+        title = title,
+        onValueChange = { option: IntOption ->
+            currentValue = option.value
+            onValueChange(option.value)
+        },
+        subtitle = summary?.let { { PreferenceSubtitle(it) } },
+        valueToText = { option -> option.label }
+    )
+}
+
+@Composable
+fun SwitchSetting(
+    title: String,
+    summary: String? = null,
+    value: () -> Boolean,
+    onValueChange: (Boolean) -> Unit
+) {
+    var checked by rememberSaveable { mutableStateOf(value()) }
+
+    SwitchPreference(
+        checked = checked,
+        title = title,
+        onClick = {
+            checked = !checked
+            onValueChange(checked)
+        }
+    )
 }

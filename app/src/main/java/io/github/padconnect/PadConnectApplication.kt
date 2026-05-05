@@ -11,6 +11,7 @@ package io.github.padconnect
 
 import android.app.Application
 import android.content.Context
+import io.github.padconnect.utils.Logger
 import io.github.padconnect.utils.settings.GlobalConfig
 
 class PadConnectApplication : Application() {
@@ -28,6 +29,7 @@ class PadConnectApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         GlobalConfig.init(this)
+        Logger.init(this)
         instance = this
     }
 }

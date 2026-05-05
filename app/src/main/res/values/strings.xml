@@ -5,4 +5,10 @@
     <string name="settings">Settings</string>
     <string name="advanced_settings">Advanced Settings</string>
     <string name="advanced_settings_description">Configure advanced settings</string>
+    <string name="core_settings">Core</string>
+    <string name="display_settings">Display</string>
+    <string name="theme_settings">Theme and color</string>
+    <string name="theme_settings_description">Modify the look of the app</string>
+    <string name="about">About</string>
+    <string name="about_desc">Version and more</string>
 </resources>

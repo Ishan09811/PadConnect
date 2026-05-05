@@ -40,11 +40,15 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import io.github.padconnect.dialogs.AlertDialogHost
+import io.github.padconnect.ui.main.AboutScreen
 import io.github.padconnect.ui.main.GPEmulationScreen
 import io.github.padconnect.ui.main.LayoutsScreen
 import io.github.padconnect.ui.main.SetupScreen
 import io.github.padconnect.ui.settings.AdvancedSettingsScreen
+import io.github.padconnect.ui.settings.CoreSettingsScreen
+import io.github.padconnect.ui.settings.DisplaySettingsScreen
 import io.github.padconnect.ui.settings.SettingsScreen
+import io.github.padconnect.ui.settings.ThemeSettingsScreen
 import io.github.padconnect.utils.LayoutStorage
 import io.github.padconnect.utils.settings.GlobalConfig
 import io.github.padconnect.viewmodel.GPEmulationViewModel
@@ -88,7 +92,7 @@ fun PadConnectApp(viewmodel: GPEmulationViewModel) {
 
     val showBottomBar by remember(currentRoute) {
         derivedStateOf {
-            currentRoute != null && !currentRoute.startsWith("emulation") && !currentRoute.endsWith("settings") && currentRoute != "SETUP"
+            currentRoute != null && AppDestinations.entries.find { it.name == currentRoute } != null
         }
     }
 
@@ -151,7 +155,8 @@ fun HomeNavGraph(navController: NavHostController, viewModel: GPEmulationViewMod
             LayoutsScreen(
                 onLayoutSelected = { layout ->
                     navController.navigate("emulation/${layout.name}")
-                }
+                },
+                viewModel
             )
         }
 
@@ -172,7 +177,25 @@ fun HomeNavGraph(navController: NavHostController, viewModel: GPEmulationViewMod
         }
 
         composable("advanced_settings") {
-            AdvancedSettingsScreen()
+            AdvancedSettingsScreen(navigateTo = {
+                navController.navigate(it)
+            }, navigateBack = navController::navigateUp)
+        }
+
+        composable(route = "core_settings") {
+            CoreSettingsScreen(navigateBack = navController::navigateUp)
+        }
+
+        composable(route = "display_settings") {
+            DisplaySettingsScreen(navigateBack = navController::navigateUp)
+        }
+
+        composable("theme_settings") {
+            ThemeSettingsScreen(navigateBack = navController::navigateUp)
+        }
+
+        composable("about") {
+            AboutScreen()
         }
 
         composable(

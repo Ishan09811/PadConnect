@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="input_update_rate_labels">
+        <item>120Hz (Battery saver)</item>
+        <item>240Hz</item>
+        <item>360Hz</item>
+        <item>500Hz (Default)</item>
+        <item>1000Hz (High performance)</item>
+    </string-array>
+
+    <integer-array name="input_update_rate_values">
+        <item>120</item>
+        <item>240</item>
+        <item>360</item>
+        <item>500</item>
+        <item>1000</item>
+    </integer-array>
+
+    <string-array name="theme_mode_labels">
+        <item>System</item>
+        <item>Light</item>
+        <item>Dark</item>
+    </string-array>
+
+    <integer-array name="theme_mode_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+    </integer-array>
+</resources>
