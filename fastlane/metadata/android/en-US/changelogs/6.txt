@@ -1,0 +1,7 @@
+- Refactor settings screens
+- allow to disable latency
+- implement haptic feedback support
+- show whether receiver is online or offline
+- remove support for receiver v0.1
+- add baselineProfile optimizations
+- add about screen

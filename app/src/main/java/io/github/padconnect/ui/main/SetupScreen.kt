@@ -65,7 +65,7 @@ fun SetupScreen(viewModel: GPEmulationViewModel? = null, navigateTo: ((String) -
             title = "Setup required on your PC(Windows Only)",
             subtitle = "Download PadConnectReceiver on your PC(Windows Only)",
             buttonText = "Download Receiver",
-            url = "https://github.com/ishan09811/PadConnectReceiver/releases/latest"
+            url = "https://github.com/Ishan09811/PadConnectReceiver/releases/tag/v0.2"
         ),
         SetupStep(
             title = "Install Driver",
