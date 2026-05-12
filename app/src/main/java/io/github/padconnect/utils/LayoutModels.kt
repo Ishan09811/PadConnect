@@ -16,7 +16,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ControllerLayout(
     var name: String,
-    val elements: List<ControllerElement>
+    var elements: List<ControllerElement>
 )
 
 @Serializable
@@ -26,6 +26,7 @@ sealed class ControllerElement {
     abstract val y: Float
     abstract val size: Float
     abstract val opacity: Float
+    abstract val enabled: Boolean
 }
 
 @SuppressLint("UnsafeOptInUsageError")
@@ -37,6 +38,7 @@ data class ButtonElement(
     override val y: Float,
     override val size: Float,
     override val opacity: Float,
+    override val enabled: Boolean = true,
     val key: GamepadKey
 ) : ControllerElement()
 
@@ -48,7 +50,8 @@ data class AnalogStickElement(
     override val x: Float,
     override val y: Float,
     override val size: Float,
-    override val opacity: Float
+    override val opacity: Float,
+    override val enabled: Boolean = true
 ) : ControllerElement()
 
 enum class GamepadKey(val id: Int) {

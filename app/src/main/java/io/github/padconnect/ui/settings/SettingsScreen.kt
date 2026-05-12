@@ -41,7 +41,6 @@ import com.github.ishan09811.compose_preferences.preference.SingleSelectionDialo
 import com.github.ishan09811.compose_preferences.preference.SwitchPreference
 import io.github.padconnect.R
 import io.github.padconnect.utils.settings.GlobalConfig
-import kotlinx.coroutines.withTimeout
 
 data class IntOption(
     val value: Int,

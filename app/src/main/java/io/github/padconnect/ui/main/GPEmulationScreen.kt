@@ -12,23 +12,37 @@ package io.github.padconnect.ui.main
 import android.annotation.SuppressLint
 import android.app.Activity
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.visible
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -51,11 +65,18 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.github.ishan09811.materialswitch.MaterialSwitch
 import io.github.padconnect.R
 import io.github.padconnect.transport.TransportManager
 import io.github.padconnect.utils.AnalogStickElement
 import io.github.padconnect.utils.ButtonElement
+import io.github.padconnect.utils.ControllerElement
 import io.github.padconnect.utils.ControllerLayout
+import io.github.padconnect.utils.LayoutStorage
+import io.github.padconnect.utils.LayoutStorage.updateElement
 import io.github.padconnect.viewmodel.GPEmulationViewModel
 import kotlin.math.roundToInt
 
@@ -63,13 +84,54 @@ import kotlin.math.roundToInt
 @Composable
 fun GPEmulationScreen(
     layout: ControllerLayout,
-    viewModel: GPEmulationViewModel
+    viewModel: GPEmulationViewModel,
+    isEditMode: Boolean = false
 ) {
+    val context = LocalContext.current
+    var eLayout by remember {
+        mutableStateOf(layout)
+    }
     val lastLatency by viewModel.lastLatency.collectAsState()
     val controlPointers = remember { mutableSetOf<PointerId>() }
     val buttonBounds = remember { mutableStateMapOf<ButtonElement, Rect>() }
     val activeButtonPointers = remember { mutableStateMapOf<PointerId, ButtonElement>() }
-    FullScreenEffect()
+
+    var selectedElementId by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    val selectedElement = remember(selectedElementId, eLayout) {
+        eLayout.elements.firstOrNull {
+            it.id == selectedElementId
+        }
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner, isEditMode, eLayout) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP && isEditMode) {
+                val layouts = LayoutStorage.load(context)
+
+                val index = layouts.indexOfFirst {
+                    it.name == eLayout.name
+                }
+
+                if (index != -1) {
+                    layouts[index] = eLayout
+                    LayoutStorage.save(context, layouts)
+                }
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    FullScreen()
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize().background(Color.Black).pointerInput(Unit) {
             awaitPointerEventScope {
@@ -80,6 +142,7 @@ fun GPEmulationScreen(
                 val sensitivity = 0.02f
 
                 while (true) {
+                    if (isEditMode) return@awaitPointerEventScope
                     val event = awaitPointerEvent()
 
                     event.changes.forEach { change ->
@@ -108,7 +171,7 @@ fun GPEmulationScreen(
                                     oldButton?.let {
                                         viewModel.transport?.setButton(it.key.id, false)
                                     }
-                                    viewModel.transport?.setButton(it.key.id, true)
+                                    if (it.enabled) viewModel.transport?.setButton(it.key.id, true)
                                 }
 
                                 if (hit != null) {
@@ -163,7 +226,7 @@ fun GPEmulationScreen(
         }
     ) {
         Text(text = "${lastLatency?.roundToInt()}ms", modifier = Modifier.align(Alignment.TopStart).padding(start = 25.dp), color = Color.White)
-        layout.elements.forEach { element ->
+        eLayout.elements.forEach { element ->
             when (element) {
                 is ButtonElement -> GamepadButton(
                     modifier = Modifier,
@@ -171,7 +234,17 @@ fun GPEmulationScreen(
                     screenWidth = maxWidth,
                     screenHeight = maxHeight,
                     buttonBounds = buttonBounds,
-                    isPressed = activeButtonPointers.containsValue(element)
+                    isPressed = activeButtonPointers.containsValue(element),
+                    isEditMode = isEditMode,
+                    isSelected = selectedElementId == element.id,
+                    onSelect = {
+                        selectedElementId = element.id
+                    },
+                    onUpdate = { updated ->
+                        eLayout = eLayout.updateElement(updated.id) {
+                            updated
+                        }
+                    }
                 )
 
                 is AnalogStickElement -> AnalogStick(
@@ -182,6 +255,18 @@ fun GPEmulationScreen(
                     controlPointers
                 )
             }
+        }
+
+        if (isEditMode) {
+            EditPanel(
+                element = selectedElement,
+                onUpdate = { updated ->
+                    eLayout = eLayout.updateElement(updated.id) {
+                        updated
+                    }
+                },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
     }
 }
@@ -194,17 +279,32 @@ fun GamepadButton(
     screenWidth: Dp,
     screenHeight: Dp,
     buttonBounds: MutableMap<ButtonElement, Rect>,
-    isPressed: Boolean = false
+    isPressed: Boolean = false,
+    isSelected: Boolean,
+    onSelect: () -> Unit,
+    onUpdate: (ButtonElement) -> Unit,
+    isEditMode: Boolean
 ) {
-    val sizeDp = screenWidth * button.size
-
     val density = LocalDensity.current
+
     val screenWidthPx = with(density) { screenWidth.toPx() }
     val screenHeightPx = with(density) { screenHeight.toPx() }
 
+    val latestButton by rememberUpdatedState(button)
+
+    var localX by remember(button.id) {
+        mutableFloatStateOf(button.x)
+    }
+
+    var localY by remember(button.id) {
+        mutableFloatStateOf(button.y)
+    }
+
+    val sizeDp = screenWidth * button.size
     val sizePx = screenWidthPx * button.size
-    val xPx = screenWidthPx * button.x - sizePx / 2f
-    val yPx = screenHeightPx * button.y - sizePx / 2f
+
+    val xPx = screenWidthPx * localX - sizePx / 2f
+    val yPx = screenHeightPx * localY - sizePx / 2f
 
     buttonBounds[button] = Rect(
         xPx,
@@ -216,15 +316,80 @@ fun GamepadButton(
     Box(
         modifier = modifier
             .offset(
-                x = screenWidth * button.x - sizeDp / 2,
-                y = screenHeight * button.y - sizeDp / 2
+                x = screenWidth * localX - sizeDp / 2,
+                y = screenHeight * localY - sizeDp / 2
             )
             .size(sizeDp)
-            .graphicsLayer { alpha = button.opacity }
-            .background(if (!isPressed) Color.White.copy(alpha = 0.3f) else Color.Transparent, CircleShape),
+            .graphicsLayer {
+                alpha = button.opacity
+            }
+            .background(
+                when {
+                    !button.enabled -> Color.White.copy(alpha = 0.05f)
+
+                    !isPressed -> Color.White.copy(alpha = 0.3f)
+
+                    else -> Color.Transparent
+                },
+                CircleShape
+            )
+            .border(
+                width = when {
+                    isSelected -> 2.dp
+                    !button.enabled -> 1.dp
+                    else -> 0.dp
+                },
+
+                color = when {
+                    isSelected -> Color.Cyan
+                    !button.enabled -> Color.White.copy(alpha = 0.25f)
+                    else -> Color.Transparent
+                },
+
+                shape = CircleShape
+            )
+            .visible(if (!isEditMode) button.enabled else true)
+            .pointerInput(isEditMode) {
+                if (!isEditMode) return@pointerInput
+
+                detectTapGestures(
+                    onTap = {
+                        onSelect()
+                    }
+                )
+            }
+            .pointerInput(isEditMode, button.enabled) {
+                if (!isEditMode || !button.enabled) return@pointerInput
+
+                detectDragGestures(
+                    onDragStart = {
+                        onSelect()
+                    },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        localX = (localX + dragAmount.x / screenWidthPx).coerceIn(0f, 1f)
+                        localY = (localY + dragAmount.y / screenHeightPx).coerceIn(0f, 1f)
+                    },
+
+                    onDragEnd = {
+                        onUpdate(
+                            latestButton.copy(
+                                x = localX,
+                                y = localY
+                            )
+                        )
+                    }
+                )
+            },
         contentAlignment = Alignment.Center
     ) {
-        GamepadButtonLabel(button.key.name)
+        Box(
+            modifier = Modifier.graphicsLayer {
+                alpha = if (button.enabled) button.opacity else 0.35f
+            }
+        ) {
+            GamepadButtonLabel(button.key.name)
+        }
     }
 }
 
@@ -293,12 +458,12 @@ fun AnalogStick(
                 }
             }
     ) {
-        DPadVisual(knobOffset)
+        AnalogStickVisual(knobOffset)
     }
 }
 
 @Composable
-private fun DPadVisual(knobOffset: Offset) {
+private fun AnalogStickVisual(knobOffset: Offset) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -326,9 +491,190 @@ private fun DPadVisual(knobOffset: Offset) {
     }
 }
 
+@Composable
+fun EditPanel(
+    element: ControllerElement?,
+    onUpdate: (ControllerElement) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var offsetX by remember {
+        mutableFloatStateOf(40f)
+    }
+
+    var offsetY by remember {
+        mutableFloatStateOf(120f)
+    }
+
+    Box(
+        modifier = modifier
+            .offset {
+                IntOffset(
+                    offsetX.roundToInt(),
+                    offsetY.roundToInt()
+                )
+            }
+            .width(260.dp)
+            .background(
+                Color.Black.copy(alpha = 0.92f),
+                RoundedCornerShape(20.dp)
+            )
+            .border(
+                1.dp,
+                Color.White.copy(alpha = 0.15f),
+                RoundedCornerShape(20.dp)
+            )
+    ) {
+
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Color.White.copy(alpha = 0.08f),
+                        RoundedCornerShape(
+                            topStart = 20.dp,
+                            topEnd = 20.dp
+                        )
+                    )
+                    .pointerInput(Unit) {
+                        detectDragGestures { change, dragAmount ->
+                            change.consume()
+
+                            offsetX += dragAmount.x
+                            offsetY += dragAmount.y
+                        }
+                    }
+                    .padding(
+                        horizontal = 16.dp,
+                        vertical = 12.dp
+                    ),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                Text(
+                    text = element?.id ?: "All",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f)
+                )
+
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(
+                            Color.White.copy(alpha = 0.08f),
+                            CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "≡",
+                        color = Color.White
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+
+                Text(
+                    text = "Size",
+                    color = Color.White
+                )
+
+                Slider(
+                    value = element?.size ?: 0f,
+                    onValueChange = { value ->
+                        element?.let {
+                            when (it) {
+                                is ButtonElement -> {
+                                    onUpdate(
+                                        it.copy(size = value)
+                                    )
+                                }
+
+                                is AnalogStickElement -> {
+                                    onUpdate(
+                                        it.copy(size = value)
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    valueRange = 0.05f..0.3f
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                Text(
+                    text = "Opacity",
+                    color = Color.White
+                )
+
+                Slider(
+                    value = element?.opacity ?: 0f,
+                    onValueChange = { value ->
+                        element?.let {
+                            when (it) {
+                                is ButtonElement -> {
+                                    onUpdate(
+                                        it.copy(opacity = value)
+                                    )
+                                }
+
+                                is AnalogStickElement -> {
+                                    onUpdate(
+                                        it.copy(opacity = value)
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    valueRange = 0.1f..1f
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    Text(
+                        text = "Enabled",
+                        color = Color.White,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    MaterialSwitch(
+                        checked = element?.enabled ?: true,
+                        onCheckedChange = { enabled ->
+                            element?.let {
+                                when (it) {
+                                    is ButtonElement -> {
+                                        onUpdate(
+                                            it.copy(enabled = enabled)
+                                        )
+                                    }
+
+                                    is AnalogStickElement -> {
+                                        onUpdate(
+                                            it.copy(enabled = enabled)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
-fun FullScreenEffect() {
+fun FullScreen() {
     val context = LocalContext.current
     val window = (context as Activity).window
     val controller = remember {

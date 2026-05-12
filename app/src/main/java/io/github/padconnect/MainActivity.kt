@@ -153,8 +153,8 @@ fun HomeNavGraph(navController: NavHostController, viewModel: GPEmulationViewMod
     ) {
         composable("HOME") {
             LayoutsScreen(
-                onLayoutSelected = { layout ->
-                    navController.navigate("emulation/${layout.name}")
+                navigateTo = {
+                    navController.navigate(it)
                 },
                 viewModel
             )
@@ -199,13 +199,17 @@ fun HomeNavGraph(navController: NavHostController, viewModel: GPEmulationViewMod
         }
 
         composable(
-            route = "emulation/{layoutName}",
+            route = "emulation/{layoutName}/{isEditMode}",
             arguments = listOf(
-                navArgument("layoutName") { type = NavType.StringType }
+                navArgument("layoutName") { type = NavType.StringType },
+                navArgument("isEditMode") { type = NavType.BoolType }
             )
         ) { backStackEntry ->
             val layoutName =
                 backStackEntry.arguments?.getString("layoutName")!!
+
+            val isEditMode =
+                backStackEntry.arguments?.getBoolean("isEditMode") ?: false
 
             val layout = remember(layoutName) {
                 LayoutStorage.load(context, layoutName)
@@ -213,7 +217,8 @@ fun HomeNavGraph(navController: NavHostController, viewModel: GPEmulationViewMod
 
             GPEmulationScreen(
                 layout = layout!!,
-                viewModel
+                viewModel,
+                isEditMode
             )
         }
     }

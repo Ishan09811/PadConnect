@@ -68,11 +68,10 @@ import io.github.padconnect.utils.ControllerLayout
 import io.github.padconnect.utils.LayoutStorage
 import io.github.padconnect.viewmodel.GPEmulationViewModel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.time.delay
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun LayoutsScreen(onLayoutSelected: (ControllerLayout) -> Unit, viewModel: GPEmulationViewModel) {
+fun LayoutsScreen(navigateTo: (String) -> Unit, viewModel: GPEmulationViewModel) {
     val context = LocalContext.current
     val layouts = remember {
         mutableStateListOf<ControllerLayout>().apply {
@@ -163,21 +162,12 @@ fun LayoutsScreen(onLayoutSelected: (ControllerLayout) -> Unit, viewModel: GPEmu
                 items(layouts) { layout ->
                     LayoutCard(
                         layout,
-                        onLayoutSelected,
+                        { navigateTo.invoke("emulation/${it.name}/${false}") },
                         onDelete = {
                             layouts.remove(it)
                         },
-                        onRename = {
-                            AlertDialogQueue.show(
-                                AppDialog.Input(
-                                    title = "Rename",
-                                    initialValue = it.name,
-                                    onConfirm = { name ->
-                                        layouts.remove(it)
-                                        layouts.add(it.copy(name = name))
-                                    }
-                                )
-                            )
+                        onEdit = {
+                            navigateTo.invoke("emulation/${it.name}/${true}")
                         }
                     )
                 }
@@ -190,8 +180,8 @@ fun LayoutsScreen(onLayoutSelected: (ControllerLayout) -> Unit, viewModel: GPEmu
 @Composable
 private fun LayoutCard(
     layout: ControllerLayout,
-    onLayoutSelected: (ControllerLayout) -> Unit,
-    onRename: (ControllerLayout) -> Unit,
+    onClick: (ControllerLayout) -> Unit,
+    onEdit: (ControllerLayout) -> Unit,
     onDelete: (ControllerLayout) -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -203,7 +193,7 @@ private fun LayoutCard(
                 .aspectRatio(1.2f)
                 .combinedClickable(
                     onClick = {
-                        onLayoutSelected(layout)
+                        onClick(layout)
                     },
                     onLongClick = {
                         menuExpanded = true
@@ -227,10 +217,10 @@ private fun LayoutCard(
             ) {
                 DropdownMenuItem(
                     leadingIcon = { Icon(painter = painterResource(R.drawable.ic_edit), contentDescription = "Rename Layout") },
-                    text = { Text("Rename") },
+                    text = { Text("Edit") },
                     onClick = {
                         menuExpanded = false
-                        onRename(layout)
+                        onEdit(layout)
                     }
                 )
                 HorizontalDivider()

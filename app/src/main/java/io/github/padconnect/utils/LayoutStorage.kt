@@ -151,4 +151,15 @@ object LayoutStorage {
             )
         )
     }
+
+    inline fun ControllerLayout.updateElement(
+        id: String,
+        update: (ControllerElement) -> ControllerElement
+    ): ControllerLayout {
+        return copy(
+            elements = elements.map {
+                if (it.id == id) update(it) else it
+            }
+        )
+    }
 }
