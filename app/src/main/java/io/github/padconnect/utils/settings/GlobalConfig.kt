@@ -23,7 +23,7 @@ import java.io.File
 @Serializable
 data class ConfigModel(
     // Setup
-    val initialSetupFinished: Boolean = true,
+    val initialSetupFinished: Boolean = false,
     // Advanced Settings
     // (Core)
     val inputUpdateRate: Int = 500,
