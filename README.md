@@ -6,12 +6,12 @@
 
 > **Low latency virtual gamepad** — built with **Kotlin** and **Jetpack Compose**
 
-PadConnect lets your phone act as a **real controller (Xbox 360/DualShock4)** for a PC. It streams gamepad input with very low latency and exposes it on Windows using **ViGEm**.
+PadConnect lets your phone act as a **real controller (Xbox 360/DualShock4)** for a PC. It streams gamepad input with very low latency and exposes it on Windows using **ViGEm** and natively in linux.
 
 This project is split into two parts:
 
-* **PadConnect** → Android / client app (virtual controller UI)
-* **[PadConnectReceiver](https://github.com/Ishan09811/PadConnectReceiver)** → Windows / receiver app (creates virtual controller)
+* **PadConnect** -> Android / client app (virtual controller UI)
+* **[PadConnectReceiver](https://github.com/Ishan09811/PadConnectReceiver)** -> PC / receiver app (creates virtual controller)
 
 ---
 
@@ -30,7 +30,7 @@ This project is split into two parts:
 ## How it works
 
 ```
-[ Android Phone ] ── UDP ──▶ [ PadConnectReceiver (Windows) ] ──▶ [ ViGEm ] ──▶ Game
+[ Android Phone ] ── UDP ──▶ [ PadConnectReceiver (PC) ] ──▶ [ ViGEm ] ──▶ Game
 ```
 
 1. **PadConnect (Android)**
@@ -40,11 +40,11 @@ This project is split into two parts:
     * Serializes input events
     * Sends them over UDP
 
-2. **[PadConnectReceiver](https://github.com/Ishan09811/PadConnectReceiver) (Windows)**
+2. **[PadConnectReceiver](https://github.com/Ishan09811/PadConnectReceiver)**
 
     * Listens for incoming UDP packets
     * Deserializes controller events
-    * Feeds them into **ViGEm**
+    * Feeds them into **ViGEm** in windows and natively in linux
     * Exposes a virtual **Xbox 360(working)/DualShock4(soon) controller** to the OS
 
 Games see it as a *real* controller.
@@ -56,7 +56,7 @@ Games see it as a *real* controller.
 
 * Kotlin + Jetpack Compose
 * UDP networking
-* Touch → Gamepad mapping
+* Touch -> Gamepad mapping
 
 ### [PadConnectReceiver](https://github.com/Ishan09811/PadConnectReceiver) (Server)
 
@@ -79,11 +79,14 @@ Games see it as a *real* controller.
 * **ViGEmBus Driver** installed
 * .NET / JVM compatible environment (depending on receiver build)
 
+### Linux
+* no requirements
+
 ---
 
 ## Getting Started
 
-### 1. Install ViGEm
+### 1. Install ViGEm (only needed for windows users)
 
 Download and install **ViGEmBus**:
 
@@ -93,10 +96,11 @@ Reboot after installation.
 
 ---
 
-### 2. Run PadConnectReceiver (Windows)
+### 2. Run PadConnectReceiver
 
 ```bash
-PadConnectReceiver.exe
+Windows: PadConnectReceiver.exe
+Linux: PadConnectReceiver.AppImage
 ```
 
 * Starts listening on UDP
@@ -116,8 +120,9 @@ PadConnectReceiver.exe
 
 * Buttons: A / B / X / Y
 * Shoulder buttons
-* Triggers (analog)
-* D-Pad
+* Right Analog Stick (it is mostly used for changing camera angle so emulated as touch screen like change camera angle in a mobile game)
+* Left Analog Stick
+* R3 and L3 added as separate buttons
 
 ---
 
@@ -142,10 +147,10 @@ PadConnectReceiver/
 
 * [ ] DualShock4 input executor 
 * [ ] Multiple controller support
-* [ ] Custom controller layouts
-* [ ] Latency & packet loss stats
+* [x] Custom controller layouts
+* [x] Latency stats
 * [ ] BLE HID (does not require receiver)
-* [ ] Linux receiver
+* [x] Linux receiver
 
 ---
 
