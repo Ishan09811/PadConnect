@@ -55,7 +55,7 @@ fun AboutScreen(
     appName: String = stringResource(id = R.string.app_name),
     version: String = BuildConfig.VERSION_NAME,
     author: String = "Ishan09811",
-    about: String = "Turn your phone into a PC game controller (Windows only)",
+    about: String = "Turn your phone into a PC game controller",
     githubUrl: String = "https://github.com/Ishan09811/PadConnect",
     discordUrl: String = "https://discord.gg/BrMAZbEyXs",
     onBack: (() -> Unit)? = null
