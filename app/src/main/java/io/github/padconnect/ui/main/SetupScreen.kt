@@ -62,14 +62,14 @@ fun SetupScreen(viewModel: GPEmulationViewModel? = null, navigateTo: ((String) -
 
     val steps = listOf(
         SetupStep(
-            title = "Setup required on your PC(Windows Only)",
-            subtitle = "Download PadConnectReceiver on your PC(Windows Only)",
+            title = "Setup required on your PC",
+            subtitle = "Download PadConnectReceiver on your PC",
             buttonText = "Download Receiver",
-            url = "https://github.com/Ishan09811/PadConnectReceiver/releases/tag/v0.2"
+            url = "https://github.com/Ishan09811/PadConnectReceiver/releases/tag/v0.3"
         ),
         SetupStep(
             title = "Install Driver",
-            subtitle = "Install ViGEm driver (required for controller support)",
+            subtitle = "Install ViGEm driver (required only for windows users)",
             buttonText = "Download ViGEm",
             url = "https://github.com/nefarius/ViGEmBus/releases/latest"
         ),
