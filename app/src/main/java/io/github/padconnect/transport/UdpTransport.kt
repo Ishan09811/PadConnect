@@ -21,6 +21,7 @@ import java.io.IOException
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
+import java.nio.BufferUnderflowException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.locks.LockSupport
@@ -31,24 +32,33 @@ class UdpTransport(
     port: Int,
     private val onLatencyStatsReceive: ((Double) -> Unit)? = null
 ) : GamepadTransport {
-
     private val socket = DatagramSocket()
 
     private val address = InetAddress.getByName(host)
-    private val packet = DatagramPacket(ByteArray(20), 20, address, port)
+    private val sendBuffer = ByteBuffer.allocate(PACKET_SIZE).order(ByteOrder.LITTLE_ENDIAN)
+    private val packet = DatagramPacket(sendBuffer.array(), PACKET_SIZE, address, port)
 
     private val stateLock = Any()
-    private var state = GamepadState()
+    private val state = GamepadState()
 
     @Volatile
     private var isRunning = true
-
-    private var retryDelay = 500L
 
     private val hapticHandler = HapticHandler()
 
     @Volatile
     private var lastResponseTime = 0L
+
+    companion object {
+        private const val PACKET_SIZE = 21 // 1(type) + 2+2+2+2+2(axes) + 1+1(triggers) + 8(timestamp)
+        private const val RECV_BUFFER_SIZE = 64
+        private const val TRIGGER_PRESSED: Byte = 100
+        private const val TRIGGER_RELEASED: Byte = 0
+        private const val INITIAL_RETRY_DELAY_MS = 500L
+        private const val MAX_RETRY_DELAY_MS = 5000L
+        private const val RECEIVER_TIMEOUT_MS = 2000L
+        private const val LOG_THROTTLE_THRESHOLD_MS = 2000L
+    }
 
     fun isWifiAvailable(): Boolean {
         val cm = PadConnectApplication.context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -57,77 +67,72 @@ class UdpTransport(
         return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
     }
 
+    private fun waitForReconnect(tag: String, e: Exception, retryDelayHolder: LongArray) {
+        while (isRunning) {
+            if (isWifiAvailable()) break
+            if (retryDelayHolder[0] < LOG_THROTTLE_THRESHOLD_MS) {
+                Logger.error(tag, "Operation failed: ${e.message}")
+            }
+            Thread.sleep(retryDelayHolder[0])
+            retryDelayHolder[0] = (retryDelayHolder[0] * 2).coerceAtMost(MAX_RETRY_DELAY_MS)
+        }
+        retryDelayHolder[0] = INITIAL_RETRY_DELAY_MS
+    }
+
     private val senderThread = Thread {
-        val buffer = ByteBuffer.allocate(21).order(ByteOrder.LITTLE_ENDIAN)
         var next = System.nanoTime()
+        val sendRetryDelay = longArrayOf(INITIAL_RETRY_DELAY_MS)
 
         Logger.info("UdpTransport", "senderThread Started")
         while (isRunning) {
-
             val intervalNs = 1_000_000_000L / GlobalConfig.INPUT_UPDATE_RATE.int
-
-            buffer.clear()
-
-            buffer.put(0) // type = input
+            sendBuffer.clear()
+            sendBuffer.put(0) // type = input
             synchronized(stateLock) {
-                buffer.putShort(state.buttons.toShort())
-                buffer.putShort(state.lx)
-                buffer.putShort(state.ly)
-                buffer.putShort(state.rx)
-                buffer.putShort(state.ry)
-                buffer.put(state.lt)
-                buffer.put(state.rt)
+                sendBuffer.putShort(state.buttons.toShort())
+                sendBuffer.putShort(state.lx)
+                sendBuffer.putShort(state.ly)
+                sendBuffer.putShort(state.rx)
+                sendBuffer.putShort(state.ry)
+                sendBuffer.put(state.lt)
+                sendBuffer.put(state.rt)
             }
-            buffer.putLong(System.nanoTime())
+            sendBuffer.putLong(System.nanoTime())
 
-            packet.setData(buffer.array())
-            packet.length = buffer.position()
+            packet.length =sendBuffer.position()
 
             try {
                 socket.send(packet)
             } catch (e: IOException) {
-                while (isRunning) {
-                    if (isWifiAvailable()) break
-
-                    if (retryDelay < 2000L) {
-                        Logger.error("UdpTransport", "Send failed: ${e.message}")
-                    }
-                    Thread.sleep(retryDelay)
-                    retryDelay = (retryDelay * 2).coerceAtMost(5000)
-                }
-
-                retryDelay = 500L
+                if (!isRunning) break
+                waitForReconnect("UdpTransport", e, sendRetryDelay)
+                next = System.nanoTime()
                 continue
             }
 
-            next = System.nanoTime() + intervalNs
+            next += intervalNs
             val sleep = next - System.nanoTime()
-            if (sleep > 0)
+            if (sleep > 0) {
                 LockSupport.parkNanos(sleep)
+            } else {
+                next = System.nanoTime()
+            }
         }
     }
 
     private val ioThread = Thread {
-        val buffer = ByteArray(64)
+        val buffer = ByteArray(RECV_BUFFER_SIZE)
         val packet = DatagramPacket(buffer, buffer.size)
+        val recvRetryDelay = longArrayOf(INITIAL_RETRY_DELAY_MS)
 
         Logger.info("UdpTransport:", "ioThread Started")
 
         while (isRunning && !socket.isClosed) {
             try {
                 socket.receive(packet)
-            } catch(e: IOException) {
-                while (isRunning) {
-                    if (isWifiAvailable()) break
-
-                    if (retryDelay < 2000L) {
-                        Logger.error("UdpTransport", "Receive failed: ${e.message}")
-                    }
-                    Thread.sleep(retryDelay)
-                    retryDelay = (retryDelay * 2).coerceAtMost(5000)
-                }
-
-                retryDelay = 500L
+            } catch (e: IOException) {
+                if (!isRunning) break
+                waitForReconnect("UdpTransport", e, recvRetryDelay)
                 continue
             }
 
@@ -135,24 +140,28 @@ class UdpTransport(
                 .order(ByteOrder.LITTLE_ENDIAN)
 
             val type = bb.get().toInt()
-            when (type) {
-                1 -> { // rumble
-                    Log.w("UdpTransport", "Rumble!")
-                    val large = bb.get().toInt() and 0xFF
-                    val small = bb.get().toInt() and 0xFF
-                    hapticHandler.onRumble(large, small)
+            try {
+                when (type) {
+                    1 -> { // rumble
+                        Log.w("UdpTransport", "Rumble!")
+                        val large = bb.get().toInt() and 0xFF
+                        val small = bb.get().toInt() and 0xFF
+                        hapticHandler.onRumble(large, small)
+                    }
+
+                    2 -> { // latency
+                        val sentTime = bb.long
+                        val now = System.nanoTime()
+
+                        val roundTripNs = now - sentTime
+                        val oneWayNs = roundTripNs / 2
+
+                        onLatencyStatsReceive?.invoke(oneWayNs / 1_000_000.0)
+                        lastResponseTime = System.currentTimeMillis()
+                    }
                 }
-
-                2 -> { // latency
-                    val sentTime = bb.long
-                    val now = System.nanoTime()
-
-                    val roundTripNs = now - sentTime
-                    val oneWayNs = roundTripNs / 2
-
-                    onLatencyStatsReceive?.invoke(oneWayNs / 1_000_000.0)
-                    lastResponseTime = System.currentTimeMillis()
-                }
+            } catch (e: BufferUnderflowException) {
+                Logger.error("UdpTransport", "Malformed packet (type=$type): ${e.message}")
             }
         }
     }
@@ -172,18 +181,20 @@ class UdpTransport(
     fun stop() {
         isRunning = false
         socket.close()
+        senderThread.join(1000)
+        ioThread.join(1000)
         Logger.info("UdpTransport", "Stopped")
     }
 
     override fun setButton(mask: Int, down: Boolean) {
         synchronized(stateLock) {
             if (mask == GamepadKey.LT.id) {
-                state.lt = if (down) 100 else 0
+                state.lt = if (down) TRIGGER_PRESSED else TRIGGER_RELEASED
                 return@setButton
             }
 
             if (mask == GamepadKey.RT.id) {
-                state.rt = if (down) 100 else 0
+                state.rt = if (down) TRIGGER_PRESSED else TRIGGER_RELEASED
                 return@setButton
             }
 
@@ -210,8 +221,7 @@ class UdpTransport(
     }
 
     fun isReceiverActive(): Boolean {
-        val timeoutMs = 2000L
-        return (System.currentTimeMillis() - lastResponseTime) < timeoutMs
+        return (System.currentTimeMillis() - lastResponseTime) < RECEIVER_TIMEOUT_MS
     }
 
     override fun isAvailable(): Boolean {
