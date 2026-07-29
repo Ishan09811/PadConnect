@@ -15,10 +15,11 @@ import kotlinx.serialization.Serializable
 @SuppressLint("UnsafeOptInUsageError")
 @Serializable
 data class ControllerLayout(
-    var name: String,
-    var elements: List<ControllerElement>
+    val name: String,
+    val elements: List<ControllerElement>
 )
 
+@Immutable
 @Serializable
 sealed class ControllerElement {
     abstract val id: String
@@ -29,6 +30,7 @@ sealed class ControllerElement {
     abstract val enabled: Boolean
 }
 
+@Immutable
 @SuppressLint("UnsafeOptInUsageError")
 @Serializable
 @SerialName("button")
@@ -42,6 +44,7 @@ data class ButtonElement(
     val key: GamepadKey
 ) : ControllerElement()
 
+@Immutable
 @SuppressLint("UnsafeOptInUsageError")
 @Serializable
 @SerialName("dpad")
