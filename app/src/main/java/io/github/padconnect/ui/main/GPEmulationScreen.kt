@@ -91,7 +91,9 @@ fun GPEmulationScreen(
     var eLayout by remember {
         mutableStateOf(layout)
     }
-    val lastLatency by viewModel.lastLatency.collectAsState()
+
+    LatencyIndicator(viewModel, modifier = Modifier.align(Alignment.TopStart))
+    
     val controlPointers = remember { mutableSetOf<PointerId>() }
     val buttonBounds = remember { mutableStateMapOf<ButtonElement, Rect>() }
     val activeButtonPointers = remember { mutableStateMapOf<PointerId, ButtonElement>() }
@@ -225,7 +227,6 @@ fun GPEmulationScreen(
             }
         }
     ) {
-        Text(text = "${lastLatency?.roundToInt()}ms", modifier = Modifier.align(Alignment.TopStart).padding(start = 25.dp), color = Color.White)
         eLayout.elements.forEach { element ->
             when (element) {
                 is ButtonElement -> GamepadButton(
@@ -717,6 +718,16 @@ fun GamepadButtonLabel(keyName: String) {
 
         else -> Text(keyName, style = smallLabelStyle(), color = Color.White)
     }
+}
+
+@Composable
+private fun LatencyIndicator(viewModel: GPEmulationViewModel, modifier: Modifier = Modifier) {
+    val lastLatency by viewModel.lastLatency.collectAsState()
+    Text(
+        text = if (lastLatency != null) String.format("%.1f ms", lastLatency) else "",
+        modifier = modifier.padding(start = 25.dp),
+        color = Color.White
+    )
 }
 
 @Composable
