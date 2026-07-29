@@ -9,6 +9,7 @@
 package io.github.padconnect.utils
 
 import android.annotation.SuppressLint
+import androidx.compose.runtime.Immutable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
