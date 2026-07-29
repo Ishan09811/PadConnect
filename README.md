@@ -70,7 +70,7 @@ Games see it as a *real* controller.
 
 ### Android
 
-* Android 8.0+
+* Android 10+
 * Wi-Fi connection
 
 ### Windows
@@ -151,7 +151,19 @@ PadConnectReceiver/
 * [x] Latency stats
 * [ ] BLE HID (does not require receiver)
 * [x] Linux receiver
-
+* [ ] low latency Game streaming as optional option
+* [ ] USB support
+* [ ] Optimise input sending
+* [ ] Support for grid based controller customisation
+* [ ] Support for on-screen button press haptic feedback as optional option
+* [ ] improve controller haptic feedback if possible
+* [ ] add right analog stick as optional option
+* [ ] Allow to edit entire osc(On Screen Controller) at once
+* [ ] don't show latency indicator text at all if disabled or not detected yet
+* [ ] decouple online or offline detection behaviour from latency indicator
+* [ ] Allow to reset controller customisations
+* [ ] Make layout configurable at the moment the user creating
+* [ ] Make setup screen smart to give the most latest compatible receiver version link
 ---
 
 ## Notes
