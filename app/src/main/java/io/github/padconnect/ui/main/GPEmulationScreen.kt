@@ -91,8 +91,6 @@ fun GPEmulationScreen(
     var eLayout by remember {
         mutableStateOf(layout)
     }
-
-    LatencyIndicator(viewModel, modifier = Modifier.align(Alignment.TopStart))
     
     val controlPointers = remember { mutableSetOf<PointerId>() }
     val buttonBounds = remember { mutableStateMapOf<ButtonElement, Rect>() }
@@ -227,6 +225,7 @@ fun GPEmulationScreen(
             }
         }
     ) {
+        LatencyIndicator(viewModel, modifier = Modifier.align(Alignment.TopStart))
         eLayout.elements.forEach { element ->
             when (element) {
                 is ButtonElement -> GamepadButton(
