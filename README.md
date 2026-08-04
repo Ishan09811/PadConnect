@@ -1,8 +1,17 @@
 # PadConnect
 
-<a href="https://discord.gg/BrMAZbEyXs" target="_blank">
-        <img src="https://img.shields.io/discord/1496412688685858846.svg?label=&logo=discord&logoColor=ffffff&color=5865F2&labelColor=404EED">
+<div align="center">
+        <a href="https://f-droid.org/en/packages/io.github.padconnect" target="_blank">
+        <img src="https://f-droid.org/badge/get-it-on.png" alt="F-Droid">
     </a>
+    <a href="https://discord.gg/BrMAZbEyXs" target="_blank">
+        <img src="https://img.shields.io/discord/1496412688685858846.svg?label=&logo=discord&logoColor=ffffff&color=5865F2&labelColor=404EED" alt="Discord">
+    </a>
+    <a href="https://github.com/Ishan09811/PadConnect/blob/master/LICENSE" target="_blank">
+        <img src="https://img.shields.io/github/license/ishan09811/PadConnect" alt="License">
+    </a>
+</div>
+
 
 > **Low latency virtual gamepad** — built with **Kotlin** and **Jetpack Compose**
 
@@ -44,7 +53,7 @@ This project is split into two parts:
 
     * Listens for incoming UDP packets
     * Deserializes controller events
-    * Feeds them into **ViGEm** in windows and natively in linux
+    * Feeds them into **ViGEm** in windows and **uinput** in linux
     * Exposes a virtual **Xbox 360(working)/DualShock4(soon) controller** to the OS
 
 Games see it as a *real* controller.
@@ -77,16 +86,16 @@ Games see it as a *real* controller.
 
 * Windows 10 / 11
 * **ViGEmBus Driver** installed
-* .NET / JVM compatible environment (depending on receiver build)
+* JVM compatible environment (depending on receiver build)
 
 ### Linux
-* no requirements
+* Grant execution rights to the portable AppImage (`chmod +x PadConnectReceiver.AppImage`) and run. ensure your user profile retains permission to access `/dev/uinput`.
 
 ---
 
 ## Getting Started
 
-### 1. Install ViGEm (only needed for windows users)
+### 1. Install ViGEm **(only needed for windows users)**
 
 Download and install **ViGEmBus**:
 
