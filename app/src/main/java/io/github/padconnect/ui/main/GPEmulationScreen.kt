@@ -228,7 +228,7 @@ fun GPEmulationScreen(
             }
         }
     ) {
-        LatencyIndicator(viewModel, modifier = Modifier.align(Alignment.TopStart))
+        if (showLatencyIndicator) LatencyIndicator(viewModel, modifier = Modifier.align(Alignment.TopStart))
         eLayout.elements.forEach { element ->
             when (element) {
                 is ButtonElement -> GamepadButton(
