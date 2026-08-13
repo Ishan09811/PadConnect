@@ -77,6 +77,7 @@ import io.github.padconnect.utils.ControllerElement
 import io.github.padconnect.utils.ControllerLayout
 import io.github.padconnect.utils.LayoutStorage
 import io.github.padconnect.utils.LayoutStorage.updateElement
+import io.github.padconnect.utils.settings.GlobalConfig
 import io.github.padconnect.viewmodel.GPEmulationViewModel
 import kotlin.math.roundToInt
 
@@ -130,6 +131,8 @@ fun GPEmulationScreen(
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
+
+    val showLatencyIndicator by GlobalConfig.showLatencyFlow.collectAsState(true)
 
     FullScreen()
     BoxWithConstraints(

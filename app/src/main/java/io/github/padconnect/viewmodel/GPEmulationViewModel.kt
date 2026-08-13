@@ -24,10 +24,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -85,7 +83,7 @@ class GPEmulationViewModel : ViewModel() {
             val result = DiscoverySender.discoverReceiver(
                 buildClientFeatures(
                     enableRumble = GlobalConfig.ENABLE_RUMBLE.boolean,
-                    showLatency = GlobalConfig.SHOW_LATENCY.boolean
+                    showLatency = true // important to show receiver status
                 )
             )
 
@@ -115,18 +113,16 @@ class GPEmulationViewModel : ViewModel() {
     private fun observeFeatures() {
         viewModelScope.launch {
             combine(
-                GlobalConfig.enableRumbleFlow,
-                GlobalConfig.showLatencyFlow
-            ) { enableRumble, showLatency ->
-                enableRumble to showLatency
+                GlobalConfig.enableRumbleFlow
+            ) { enableRumble ->
+                enableRumble
             }
                 .distinctUntilChanged()
-                .collect { (enableRumble, showLatency) ->
-
+                .collect { (enableRumble) ->
                     val result = DiscoverySender.discoverReceiver(
                         buildClientFeatures(
                             enableRumble = enableRumble,
-                            showLatency = showLatency
+                            showLatency = true // important to show receiver status
                         )
                     )
 

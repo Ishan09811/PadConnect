@@ -10,6 +10,7 @@
 package io.github.padconnect.utils.settings
 
 import android.content.Context
+import io.github.padconnect.BuildConfig
 import io.github.padconnect.utils.Logger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +24,7 @@ import java.io.File
 @Serializable
 data class ConfigModel(
     // Setup
-    val initialSetupFinished: Boolean = false,
+    val initialSetupFinished: Boolean = BuildConfig.DEBUG,
     // Advanced Settings
     // (Core)
     val inputUpdateRate: Int = 500,
