@@ -168,9 +168,9 @@ PadConnectReceiver/
 * [ ] improve controller haptic feedback if possible
 * [ ] add right analog stick as optional option
 * [ ] Allow to edit entire osc(On Screen Controller) at once
-* [ ] don't show latency indicator text at all if disabled or not detected yet
-* [ ] decouple online or offline detection behaviour from latency indicator
-* [ ] Allow to reset controller customisations
+* [x] don't show latency indicator text at all if disabled or not detected yet
+* [x] decouple online or offline detection behaviour from latency indicator
+* [x] Allow to reset controller customisations
 * [ ] Make layout configurable at the moment the user creating
 * [ ] Make setup screen smart to give the most latest compatible receiver version link
 ---

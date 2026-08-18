@@ -25,6 +25,7 @@ sealed interface AppDialog {
         val title: String,
         val message: String,
         val confirmText: String = "OK",
+        val dismissText: String = "Cancel",
         val onConfirm: () -> Unit = {}
     ) : AppDialog
 
@@ -77,6 +78,16 @@ fun AlertDialogHost() {
                         }
                     ) {
                         Text(dialog.confirmText)
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            //TODO: dialog.onDismiss()
+                            AlertDialogQueue.dismissCurrent()
+                        }
+                    ) {
+                        Text(dialog.dismissText)
                     }
                 }
             )

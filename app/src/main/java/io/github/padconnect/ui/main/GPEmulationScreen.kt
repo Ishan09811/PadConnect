@@ -30,12 +30,15 @@ import androidx.compose.foundation.layout.visible
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -70,6 +73,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.github.ishan09811.materialswitch.MaterialSwitch
 import io.github.padconnect.R
+import io.github.padconnect.dialogs.AlertDialogQueue
+import io.github.padconnect.dialogs.AppDialog
 import io.github.padconnect.transport.TransportManager
 import io.github.padconnect.utils.AnalogStickElement
 import io.github.padconnect.utils.ButtonElement
@@ -89,9 +94,12 @@ fun GPEmulationScreen(
     isEditMode: Boolean = false
 ) {
     val context = LocalContext.current
+
     var eLayout by remember {
         mutableStateOf(layout)
     }
+
+    val defaultLayout = remember { LayoutStorage.createDefault(layout.name) }
     
     val controlPointers = remember { mutableSetOf<PointerId>() }
     val buttonBounds = remember { mutableStateMapOf<ButtonElement, Rect>() }
@@ -170,11 +178,11 @@ fun GPEmulationScreen(
                                 ?.key
 
                             if (hit != oldButton) {
-                                hit?.let {
+                                hit?.let { hit ->
                                     oldButton?.let {
                                         viewModel.transport?.setButton(it.key.id, false)
                                     }
-                                    if (it.enabled) viewModel.transport?.setButton(it.key.id, true)
+                                    if (hit.enabled) viewModel.transport?.setButton(hit.key.id, true)
                                 }
 
                                 if (hit != null) {
@@ -268,6 +276,24 @@ fun GPEmulationScreen(
                         updated
                     }
                 },
+                onReset = {
+                    AlertDialogQueue.show(
+                        AppDialog.Message(
+                            title = "Reset Button: ${selectedElement?.id ?: "All"}",
+                            message = "Are you sure you want to reset this button?",
+                            onConfirm = {
+                                if (selectedElementId != null) {
+                                    val defaultElement = defaultLayout.elements.firstOrNull { it.id == selectedElementId }
+                                    if (defaultElement != null) {
+                                        eLayout = eLayout.updateElement(selectedElementId!!) { defaultElement }
+                                    }
+                                } else {
+                                    eLayout = defaultLayout
+                                }
+                            }
+                        )
+                    )
+                },
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
@@ -301,6 +327,15 @@ fun GamepadButton(
 
     var localY by remember(button.id) {
         mutableFloatStateOf(button.y)
+    }
+
+    var isDragging by remember { mutableStateOf(false) }
+
+    LaunchedEffect(button.x, button.y) {
+        if (!isDragging) {
+            localX = button.x
+            localY = button.y
+        }
     }
 
     val sizeDp = screenWidth * button.size
@@ -366,6 +401,7 @@ fun GamepadButton(
 
                 detectDragGestures(
                     onDragStart = {
+                        isDragging = true
                         onSelect()
                     },
                     onDrag = { change, dragAmount ->
@@ -375,12 +411,16 @@ fun GamepadButton(
                     },
 
                     onDragEnd = {
+                        isDragging = false
                         onUpdate(
                             latestButton.copy(
                                 x = localX,
                                 y = localY
                             )
                         )
+                    },
+                    onDragCancel = {
+                        isDragging = false
                     }
                 )
             },
@@ -494,10 +534,12 @@ private fun AnalogStickVisual(knobOffset: Offset) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditPanel(
     element: ControllerElement?,
     onUpdate: (ControllerElement) -> Unit,
+    onReset: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var offsetX by remember {
@@ -561,6 +603,17 @@ fun EditPanel(
                     modifier = Modifier.weight(1f)
                 )
 
+                IconButton(
+                    onClick = onReset,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        painterResource(R.drawable.ic_refresh),
+                        contentDescription = "Reset Customizations",
+                        tint = Color.White
+                    )
+                }
+
                 Box(
                     modifier = Modifier
                         .size(32.dp)
@@ -580,7 +633,6 @@ fun EditPanel(
             Column(
                 modifier = Modifier.padding(16.dp)
             ) {
-
                 Text(
                     text = "Size",
                     color = Color.White
@@ -605,7 +657,17 @@ fun EditPanel(
                             }
                         }
                     },
-                    valueRange = 0.05f..0.3f
+                    valueRange = 0.05f..0.3f,
+                    thumb = {
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.primary,
+                                    shape = CircleShape
+                                )
+                        )
+                    }
                 )
 
                 Spacer(Modifier.height(12.dp))
@@ -634,7 +696,17 @@ fun EditPanel(
                             }
                         }
                     },
-                    valueRange = 0.1f..1f
+                    valueRange = 0.1f..1f,
+                    thumb = {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.primary,
+                                    shape = CircleShape
+                                )
+                        )
+                    }
                 )
 
                 Spacer(Modifier.height(12.dp))
