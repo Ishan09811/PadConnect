@@ -100,7 +100,7 @@ fun GPEmulationScreen(
     }
 
     val defaultLayout = remember { LayoutStorage.createDefault(layout.name) }
-    
+
     val controlPointers = remember { mutableSetOf<PointerId>() }
     val buttonBounds = remember { mutableStateMapOf<ButtonElement, Rect>() }
     val activeButtonPointers = remember { mutableStateMapOf<PointerId, ButtonElement>() }
@@ -144,99 +144,120 @@ fun GPEmulationScreen(
 
     FullScreen()
     BoxWithConstraints(
-        modifier = Modifier.fillMaxSize().background(Color.Black).pointerInput(Unit) {
-            awaitPointerEventScope {
-                var cameraPointer: PointerId? = null
-                var lastPos = Offset.Zero
-                var currentVelocityX = 0f
-                var currentVelocityY = 0f
-                val sensitivity = 0.02f
-
-                while (true) {
-                    if (isEditMode) return@awaitPointerEventScope
-                    val event = awaitPointerEvent()
-
-                    event.changes.forEach { change ->
-                        if (change.changedToDown()) {
-                            val hit = buttonBounds.entries
-                                .firstOrNull { it.value.contains(change.position) }
-                                ?.key
-
-                            if (hit != null) {
-                                activeButtonPointers[change.id] = hit
-                                viewModel.transport?.setButton(hit.key.id, true)
-                                controlPointers.add(change.id)
-                                return@forEach
-                            }
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .pointerInput(isEditMode) {
+                if (isEditMode) {
+                    detectTapGestures(
+                        onTap = {
+                            selectedElementId = null
                         }
+                    )
+                }
+            }
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    var cameraPointer: PointerId? = null
+                    var lastPos = Offset.Zero
+                    var currentVelocityX = 0f
+                    var currentVelocityY = 0f
+                    val sensitivity = 0.02f
 
-                        if (change.pressed && activeButtonPointers.containsKey(change.id)) {
-                            val oldButton = activeButtonPointers[change.id]
+                    while (true) {
+                        if (isEditMode) return@awaitPointerEventScope
+                        val event = awaitPointerEvent()
 
-                            val hit = buttonBounds.entries
-                                .firstOrNull { it.value.contains(change.position) }
-                                ?.key
-
-                            if (hit != oldButton) {
-                                hit?.let { hit ->
-                                    oldButton?.let {
-                                        viewModel.transport?.setButton(it.key.id, false)
-                                    }
-                                    if (hit.enabled) viewModel.transport?.setButton(hit.key.id, true)
-                                }
+                        event.changes.forEach { change ->
+                            if (change.changedToDown()) {
+                                val hit = buttonBounds.entries
+                                    .firstOrNull { it.value.contains(change.position) }
+                                    ?.key
 
                                 if (hit != null) {
                                     activeButtonPointers[change.id] = hit
+                                    viewModel.transport?.setButton(hit.key.id, true)
+                                    controlPointers.add(change.id)
+                                    return@forEach
                                 }
                             }
 
-                            return@forEach
-                        }
+                            if (change.pressed && activeButtonPointers.containsKey(change.id)) {
+                                val oldButton = activeButtonPointers[change.id]
 
-                        if (change.changedToUp()) {
-                            if (activeButtonPointers.containsKey(change.id)) {
-                                activeButtonPointers[change.id]?.let {
-                                    viewModel.transport?.setButton(it.key.id, false)
+                                val hit = buttonBounds.entries
+                                    .firstOrNull { it.value.contains(change.position) }
+                                    ?.key
+
+                                if (hit != oldButton) {
+                                    hit?.let { hit ->
+                                        oldButton?.let {
+                                            viewModel.transport?.setButton(it.key.id, false)
+                                        }
+                                        if (hit.enabled) viewModel.transport?.setButton(
+                                            hit.key.id,
+                                            true
+                                        )
+                                    }
+
+                                    if (hit != null) {
+                                        activeButtonPointers[change.id] = hit
+                                    }
                                 }
-                                activeButtonPointers.remove(change.id)
-                                controlPointers.remove(change.id)
+
                                 return@forEach
                             }
-                        }
 
-                        if (cameraPointer == null && change.pressed && !controlPointers.contains(change.id)) {
-                            cameraPointer = change.id
-                            lastPos = change.position
-                        }
+                            if (change.changedToUp()) {
+                                if (activeButtonPointers.containsKey(change.id)) {
+                                    activeButtonPointers[change.id]?.let {
+                                        viewModel.transport?.setButton(it.key.id, false)
+                                    }
+                                    activeButtonPointers.remove(change.id)
+                                    controlPointers.remove(change.id)
+                                    return@forEach
+                                }
+                            }
 
-                        if (change.id == cameraPointer && change.pressed) {
-                            val delta = change.position - lastPos
-                            lastPos = change.position
+                            if (cameraPointer == null && change.pressed && !controlPointers.contains(
+                                    change.id
+                                )
+                            ) {
+                                cameraPointer = change.id
+                                lastPos = change.position
+                            }
 
-                            currentVelocityX += delta.x * sensitivity
-                            currentVelocityY -= delta.y * sensitivity
+                            if (change.id == cameraPointer && change.pressed) {
+                                val delta = change.position - lastPos
+                                lastPos = change.position
 
-                            currentVelocityX = currentVelocityX.coerceIn(-1f, 1f)
-                            currentVelocityY = currentVelocityY.coerceIn(-1f, 1f)
+                                currentVelocityX += delta.x * sensitivity
+                                currentVelocityY -= delta.y * sensitivity
 
-                            viewModel.transport?.setRightAxis(
-                                currentVelocityX,
-                                currentVelocityY
-                            )
-                        }
+                                currentVelocityX = currentVelocityX.coerceIn(-1f, 1f)
+                                currentVelocityY = currentVelocityY.coerceIn(-1f, 1f)
 
-                        if (change.id == cameraPointer && !change.pressed) {
-                            cameraPointer = null
-                            currentVelocityX = 0f
-                            currentVelocityY = 0f
-                            viewModel.transport?.setRightAxis(0f, 0f)
+                                viewModel.transport?.setRightAxis(
+                                    currentVelocityX,
+                                    currentVelocityY
+                                )
+                            }
+
+                            if (change.id == cameraPointer && !change.pressed) {
+                                cameraPointer = null
+                                currentVelocityX = 0f
+                                currentVelocityY = 0f
+                                viewModel.transport?.setRightAxis(0f, 0f)
+                            }
                         }
                     }
                 }
             }
-        }
     ) {
-        if (showLatencyIndicator) LatencyIndicator(viewModel, modifier = Modifier.align(Alignment.TopStart))
+        if (showLatencyIndicator) LatencyIndicator(
+            viewModel,
+            modifier = Modifier.align(Alignment.TopStart)
+        )
         eLayout.elements.forEach { element ->
             when (element) {
                 is ButtonElement -> GamepadButton(
@@ -271,10 +292,33 @@ fun GPEmulationScreen(
         if (isEditMode) {
             EditPanel(
                 element = selectedElement,
+                allElements = eLayout.elements,
                 onUpdate = { updated ->
                     eLayout = eLayout.updateElement(updated.id) {
                         updated
                     }
+                },
+                onUpdateAll = { size, opacity, enabled ->
+                    var tempLayout = eLayout
+                    eLayout.elements.forEach { el ->
+                        val updated = when (el) {
+                            is ButtonElement -> el.copy(
+                                size = size ?: el.size,
+                                opacity = opacity ?: el.opacity,
+                                enabled = enabled ?: el.enabled
+                            )
+
+                            is AnalogStickElement -> el.copy(
+                                size = size ?: el.size,
+                                opacity = opacity ?: el.opacity,
+                                enabled = enabled ?: el.enabled
+                            )
+
+                            else -> el
+                        }
+                        tempLayout = tempLayout.updateElement(updated.id) { updated }
+                    }
+                    eLayout = tempLayout
                 },
                 onReset = {
                     AlertDialogQueue.show(
@@ -283,9 +327,11 @@ fun GPEmulationScreen(
                             message = "Are you sure you want to reset this button?",
                             onConfirm = {
                                 if (selectedElementId != null) {
-                                    val defaultElement = defaultLayout.elements.firstOrNull { it.id == selectedElementId }
+                                    val defaultElement =
+                                        defaultLayout.elements.firstOrNull { it.id == selectedElementId }
                                     if (defaultElement != null) {
-                                        eLayout = eLayout.updateElement(selectedElementId!!) { defaultElement }
+                                        eLayout =
+                                            eLayout.updateElement(selectedElementId!!) { defaultElement }
                                     }
                                 } else {
                                     eLayout = defaultLayout
@@ -538,7 +584,9 @@ private fun AnalogStickVisual(knobOffset: Offset) {
 @Composable
 fun EditPanel(
     element: ControllerElement?,
+    allElements: List<ControllerElement>,
     onUpdate: (ControllerElement) -> Unit,
+    onUpdateAll: (size: Float?, opacity: Float?, enabled: Boolean?) -> Unit,
     onReset: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -549,6 +597,13 @@ fun EditPanel(
     var offsetY by remember {
         mutableFloatStateOf(120f)
     }
+
+    val isAllSelected = element == null
+    val referenceElement = element ?: allElements.firstOrNull()
+
+    val currentSize = referenceElement?.size ?: 0.15f
+    val currentOpacity = referenceElement?.opacity ?: 0.5f
+    val currentEnabled = referenceElement?.enabled ?: true
 
     Box(
         modifier = modifier
@@ -639,20 +694,15 @@ fun EditPanel(
                 )
 
                 Slider(
-                    value = element?.size ?: 0f,
+                    value = currentSize,
                     onValueChange = { value ->
-                        element?.let {
-                            when (it) {
-                                is ButtonElement -> {
-                                    onUpdate(
-                                        it.copy(size = value)
-                                    )
-                                }
-
-                                is AnalogStickElement -> {
-                                    onUpdate(
-                                        it.copy(size = value)
-                                    )
+                        if (isAllSelected) {
+                            onUpdateAll(value, null, null)
+                        } else {
+                            element.let {
+                                when (it) {
+                                    is ButtonElement -> onUpdate(it.copy(size = value))
+                                    is AnalogStickElement -> onUpdate(it.copy(size = value))
                                 }
                             }
                         }
@@ -678,20 +728,15 @@ fun EditPanel(
                 )
 
                 Slider(
-                    value = element?.opacity ?: 0f,
+                    value = currentOpacity,
                     onValueChange = { value ->
-                        element?.let {
-                            when (it) {
-                                is ButtonElement -> {
-                                    onUpdate(
-                                        it.copy(opacity = value)
-                                    )
-                                }
-
-                                is AnalogStickElement -> {
-                                    onUpdate(
-                                        it.copy(opacity = value)
-                                    )
+                        if (isAllSelected) {
+                            onUpdateAll(null, value, null)
+                        } else {
+                            element.let {
+                                when (it) {
+                                    is ButtonElement -> onUpdate(it.copy(opacity = value))
+                                    is AnalogStickElement -> onUpdate(it.copy(opacity = value))
                                 }
                             }
                         }
@@ -722,20 +767,15 @@ fun EditPanel(
                     )
 
                     MaterialSwitch(
-                        checked = element?.enabled ?: true,
+                        checked = currentEnabled,
                         onCheckedChange = { enabled ->
-                            element?.let {
-                                when (it) {
-                                    is ButtonElement -> {
-                                        onUpdate(
-                                            it.copy(enabled = enabled)
-                                        )
-                                    }
-
-                                    is AnalogStickElement -> {
-                                        onUpdate(
-                                            it.copy(enabled = enabled)
-                                        )
+                            if (isAllSelected) {
+                                onUpdateAll(null, null, enabled)
+                            } else {
+                                element.let {
+                                    when (it) {
+                                        is ButtonElement -> onUpdate(it.copy(enabled = enabled))
+                                        is AnalogStickElement -> onUpdate(it.copy(enabled = enabled))
                                     }
                                 }
                             }
