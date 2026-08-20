@@ -8,11 +8,7 @@
 
 package io.github.padconnect.transport
 
-import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.util.Log
-import io.github.padconnect.PadConnectApplication
 import io.github.padconnect.utils.GamepadKey
 import io.github.padconnect.utils.HapticHandler
 import io.github.padconnect.utils.settings.GlobalConfig
@@ -54,34 +50,11 @@ class UdpTransport(
         private const val RECV_BUFFER_SIZE = 64
         private const val TRIGGER_PRESSED: Byte = 100
         private const val TRIGGER_RELEASED: Byte = 0
-        private const val INITIAL_RETRY_DELAY_MS = 500L
-        private const val MAX_RETRY_DELAY_MS = 5000L
         private const val RECEIVER_TIMEOUT_MS = 2000L
-        private const val LOG_THROTTLE_THRESHOLD_MS = 2000L
-    }
-
-    fun isWifiAvailable(): Boolean {
-        val cm = PadConnectApplication.context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val network = cm.activeNetwork ?: return false
-        val capabilities = cm.getNetworkCapabilities(network) ?: return false
-        return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
-    }
-
-    private fun waitForReconnect(e: Exception, retryDelayHolder: LongArray) {
-        while (isRunning) {
-            if (isWifiAvailable()) break
-            if (retryDelayHolder[0] < LOG_THROTTLE_THRESHOLD_MS) {
-                Log.e(LOG_TAG, "Operation failed: ${e.message}")
-            }
-            Thread.sleep(retryDelayHolder[0])
-            retryDelayHolder[0] = (retryDelayHolder[0] * 2).coerceAtMost(MAX_RETRY_DELAY_MS)
-        }
-        retryDelayHolder[0] = INITIAL_RETRY_DELAY_MS
     }
 
     private val senderThread = Thread {
         var next = System.nanoTime()
-        val sendRetryDelay = longArrayOf(INITIAL_RETRY_DELAY_MS)
 
         Log.i(LOG_TAG, "senderThread Started")
         while (isRunning) {
@@ -99,13 +72,12 @@ class UdpTransport(
             }
             sendBuffer.putLong(System.nanoTime())
 
-            packet.length =sendBuffer.position()
+            packet.length = sendBuffer.position()
 
             try {
                 socket.send(packet)
-            } catch (e: IOException) {
+            } catch (_: IOException) {
                 if (!isRunning) break
-                waitForReconnect(e, sendRetryDelay)
                 next = System.nanoTime()
                 continue
             }
@@ -123,16 +95,14 @@ class UdpTransport(
     private val ioThread = Thread {
         val buffer = ByteArray(RECV_BUFFER_SIZE)
         val packet = DatagramPacket(buffer, buffer.size)
-        val recvRetryDelay = longArrayOf(INITIAL_RETRY_DELAY_MS)
 
         Log.i("UdpTransport:", "ioThread Started")
 
         while (isRunning && !socket.isClosed) {
             try {
                 socket.receive(packet)
-            } catch (e: IOException) {
+            } catch (_: IOException) {
                 if (!isRunning) break
-                waitForReconnect(e, recvRetryDelay)
                 continue
             }
 
