@@ -11,7 +11,8 @@ package io.github.padconnect
 
 import android.app.Application
 import android.content.Context
-import io.github.padconnect.utils.Logger
+import android.content.Intent
+import io.github.padconnect.utils.LoggerService
 import io.github.padconnect.utils.settings.GlobalConfig
 
 class PadConnectApplication : Application() {
@@ -28,8 +29,8 @@ class PadConnectApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        GlobalConfig.init(this)
-        Logger.init(this)
         instance = this
+        GlobalConfig.init(this)
+        startService(Intent(this, LoggerService::class.java))
     }
 }

@@ -10,8 +10,8 @@
 package io.github.padconnect.utils.settings
 
 import android.content.Context
+import android.util.Log
 import io.github.padconnect.BuildConfig
-import io.github.padconnect.utils.Logger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,6 +41,8 @@ object GlobalConfig {
         ignoreUnknownKeys = true
     }
 
+    private const val LOG_TAG = "GlobalConfig"
+
     private lateinit var configFile: File
     private var config: ConfigModel = ConfigModel()
 
@@ -62,7 +64,7 @@ object GlobalConfig {
             save()
         }
 
-        Logger.info("GlobalConfig", "Initialized")
+        Log.i(LOG_TAG, "Initialized")
     }
 
     private fun save() {

@@ -15,7 +15,6 @@ import android.util.Log
 import io.github.padconnect.PadConnectApplication
 import io.github.padconnect.utils.GamepadKey
 import io.github.padconnect.utils.HapticHandler
-import io.github.padconnect.utils.Logger
 import io.github.padconnect.utils.settings.GlobalConfig
 import java.io.IOException
 import java.net.DatagramPacket
@@ -50,6 +49,7 @@ class UdpTransport(
     private var lastResponseTime = 0L
 
     companion object {
+        private const val LOG_TAG = "UdpTransport"
         private const val PACKET_SIZE = 21 // 1(type) + 2+2+2+2+2(axes) + 1+1(triggers) + 8(timestamp)
         private const val RECV_BUFFER_SIZE = 64
         private const val TRIGGER_PRESSED: Byte = 100
@@ -67,11 +67,11 @@ class UdpTransport(
         return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
     }
 
-    private fun waitForReconnect(tag: String, e: Exception, retryDelayHolder: LongArray) {
+    private fun waitForReconnect(e: Exception, retryDelayHolder: LongArray) {
         while (isRunning) {
             if (isWifiAvailable()) break
             if (retryDelayHolder[0] < LOG_THROTTLE_THRESHOLD_MS) {
-                Logger.error(tag, "Operation failed: ${e.message}")
+                Log.e(LOG_TAG, "Operation failed: ${e.message}")
             }
             Thread.sleep(retryDelayHolder[0])
             retryDelayHolder[0] = (retryDelayHolder[0] * 2).coerceAtMost(MAX_RETRY_DELAY_MS)
@@ -83,7 +83,7 @@ class UdpTransport(
         var next = System.nanoTime()
         val sendRetryDelay = longArrayOf(INITIAL_RETRY_DELAY_MS)
 
-        Logger.info("UdpTransport", "senderThread Started")
+        Log.i(LOG_TAG, "senderThread Started")
         while (isRunning) {
             val intervalNs = 1_000_000_000L / GlobalConfig.INPUT_UPDATE_RATE.int
             sendBuffer.clear()
@@ -105,7 +105,7 @@ class UdpTransport(
                 socket.send(packet)
             } catch (e: IOException) {
                 if (!isRunning) break
-                waitForReconnect("UdpTransport", e, sendRetryDelay)
+                waitForReconnect(e, sendRetryDelay)
                 next = System.nanoTime()
                 continue
             }
@@ -125,14 +125,14 @@ class UdpTransport(
         val packet = DatagramPacket(buffer, buffer.size)
         val recvRetryDelay = longArrayOf(INITIAL_RETRY_DELAY_MS)
 
-        Logger.info("UdpTransport:", "ioThread Started")
+        Log.i("UdpTransport:", "ioThread Started")
 
         while (isRunning && !socket.isClosed) {
             try {
                 socket.receive(packet)
             } catch (e: IOException) {
                 if (!isRunning) break
-                waitForReconnect("UdpTransport", e, recvRetryDelay)
+                waitForReconnect(e, recvRetryDelay)
                 continue
             }
 
@@ -161,7 +161,7 @@ class UdpTransport(
                     }
                 }
             } catch (e: BufferUnderflowException) {
-                Logger.error("UdpTransport", "Malformed packet (type=$type): ${e.message}")
+                Log.e(LOG_TAG, "Malformed packet (type=$type): ${e.message}")
             }
         }
     }
@@ -172,7 +172,7 @@ class UdpTransport(
             senderThread.start()
             ioThread.start()
         } catch (e: Exception) {
-            Logger.error("UdpTransport", "Failed to start: ${e.message}")
+            Log.e(LOG_TAG, "Failed to start: ${e.message}")
             return false
         }
         return true
@@ -183,7 +183,7 @@ class UdpTransport(
         socket.close()
         senderThread.join(1000)
         ioThread.join(1000)
-        Logger.info("UdpTransport", "Stopped")
+        Log.i(LOG_TAG, "Stopped")
     }
 
     override fun setButton(mask: Int, down: Boolean) {

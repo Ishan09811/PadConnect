@@ -9,8 +9,8 @@
 package io.github.padconnect.transport
 
 import android.os.Build
+import android.util.Log
 import io.github.padconnect.PadConnectApplication
-import io.github.padconnect.utils.Logger
 
 class TransportManager(
     udpHost: String,
@@ -20,10 +20,14 @@ class TransportManager(
     private var wifi: GamepadTransport? = null
     private var ble: GamepadTransport? = null
 
+    companion object {
+        private const val LOG_TAG = "TransportManager"
+    }
+
     init {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) ble = BleTransport(PadConnectApplication.context)
         wifi = UdpTransport(udpHost, udpPort, onLatencyStatsReceive)
-        Logger.info("${this@TransportManager}", "Initialized")
+        Log.i(LOG_TAG, "Initialized")
     }
 
     fun setButton(mask: Int, down: Boolean) {

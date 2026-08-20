@@ -8,11 +8,14 @@
 
 package io.github.padconnect.utils
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
+import java.net.NetworkInterface
+
 const val FEATURE_RUMBLE = 1 shl 0
 const val FEATURE_LATENCY = 1 shl 1
 
@@ -27,6 +30,8 @@ object DiscoverySender {
     const val MIN_SUPPORTED_VERSION = 2
     private const val CLIENT_VERSION = 2
 
+    private const val LOG_TAG = "DiscoverySender"
+
     suspend fun discoverReceiver(
         clientFeatures: Int,
         timeoutMs: Int = 2000
@@ -38,14 +43,22 @@ object DiscoverySender {
 
         try {
             val requestData = "PADCONNECT_DISCOVER:$CLIENT_VERSION:$clientFeatures".toByteArray()
-            val requestPacket = DatagramPacket(
-                requestData,
-                requestData.size,
-                InetAddress.getByName("255.255.255.255"),
-                8083
-            )
 
-            socket.send(requestPacket)
+            val broadcastAddresses = getBroadcastAddresses()
+
+            for (address in broadcastAddresses) {
+                try {
+                    val requestPacket = DatagramPacket(
+                        requestData,
+                        requestData.size,
+                        address,
+                        8083
+                    )
+                    socket.send(requestPacket)
+                } catch (e: Exception) {
+                    Log.d(LOG_TAG, "Failed to send to $address", e)
+                }
+            }
 
             val buffer = ByteArray(256)
             val responsePacket = DatagramPacket(buffer, buffer.size)
@@ -86,7 +99,8 @@ object DiscoverySender {
             }
 
             null
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.d(LOG_TAG, "Discovery failed", e)
             null
         } finally {
             socket.close()
@@ -108,5 +122,32 @@ object DiscoverySender {
         }
 
         return features
+    }
+
+
+    private fun getBroadcastAddresses(): List<InetAddress> {
+        val addresses = mutableListOf<InetAddress>()
+        try {
+            val interfaces = NetworkInterface.getNetworkInterfaces()
+            while (interfaces.hasMoreElements()) {
+                val networkInterface = interfaces.nextElement()
+                if (networkInterface.isLoopback || !networkInterface.isUp) continue
+
+                for (interfaceAddress in networkInterface.interfaceAddresses) {
+                    val broadcast = interfaceAddress.broadcast
+                    if (broadcast != null) {
+                        addresses.add(broadcast)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.d(LOG_TAG, "Error getting network interfaces", e)
+        }
+
+        if (addresses.isEmpty()) {
+            addresses.add(InetAddress.getByName("255.255.255.255"))
+        }
+
+        return addresses
     }
 }

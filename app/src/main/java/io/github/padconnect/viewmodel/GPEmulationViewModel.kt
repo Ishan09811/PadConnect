@@ -17,7 +17,6 @@ import io.github.padconnect.dialogs.AppDialog
 import io.github.padconnect.transport.TransportManager
 import io.github.padconnect.utils.DiscoverySender
 import io.github.padconnect.utils.DiscoverySender.buildClientFeatures
-import io.github.padconnect.utils.Logger
 import io.github.padconnect.utils.settings.GlobalConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -70,10 +69,14 @@ class GPEmulationViewModel : ViewModel() {
         }
     }
 
+    companion object {
+        private const val LOG_TAG = "GPEmulationViewModel"
+    }
+
     init {
-        Logger.info("GPEmulationViewModel", "Initialized")
+        Log.i(LOG_TAG, "Initialized")
         searchReceiver()
-        Logger.info("GPEmulationViewModel", "Searching Receiver...")
+        Log.i(LOG_TAG, "Searching Receiver...")
         observeReceiverState()
         observeFeatures()
     }
@@ -103,7 +106,7 @@ class GPEmulationViewModel : ViewModel() {
                 }
                 _isTransportConnected.value = true
                 transport!!.start()
-                Logger.info("DiscoverySender", "Successfully connected")
+                Log.i(LOG_TAG, "Successfully connected")
             } else {
                 searchReceiver()
             }
@@ -126,7 +129,7 @@ class GPEmulationViewModel : ViewModel() {
                         )
                     )
 
-                    Logger.info("Config", "Features updated: ${result?.features}")
+                    Log.i(LOG_TAG, "Features updated: ${result?.features}")
                 }
         }
     }
