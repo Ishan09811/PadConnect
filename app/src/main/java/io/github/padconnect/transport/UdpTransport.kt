@@ -138,6 +138,7 @@ class UdpTransport(
 
     fun start(): Boolean {
         try {
+            if (isRunning) return true
             isRunning = true
             senderThread.start()
             ioThread.start()
@@ -149,6 +150,7 @@ class UdpTransport(
     }
 
     fun stop() {
+        if (!isRunning) return
         isRunning = false
         socket.close()
         senderThread.join(1000)
