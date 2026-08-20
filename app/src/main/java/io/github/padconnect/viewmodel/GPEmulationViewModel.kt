@@ -23,11 +23,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 class GPEmulationViewModel : ViewModel() {
     private val _lastLatency = MutableStateFlow<Double?>(null)
@@ -53,21 +53,7 @@ class GPEmulationViewModel : ViewModel() {
     }
 
     private var receiverJob: Job? = null
-
-    private fun observeReceiverState() {
-        receiverJob?.cancel()
-        receiverJob = viewModelScope.launch {
-            while (isActive) {
-                val active = transport?.isReceiverActive() == true
-
-                if (_isReceiverActive.value != active) {
-                    _isReceiverActive.value = active
-                }
-
-                delay(500)
-            }
-        }
-    }
+    private var searchJob: Job? = null
 
     companion object {
         private const val LOG_TAG = "GPEmulationViewModel"
@@ -82,59 +68,86 @@ class GPEmulationViewModel : ViewModel() {
     }
 
     fun searchReceiver() {
-        viewModelScope.launch {
-            val result = DiscoverySender.discoverReceiver(
-                buildClientFeatures(
-                    enableRumble = GlobalConfig.ENABLE_RUMBLE.boolean,
-                    showLatency = true // important to show receiver status
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            Log.i(LOG_TAG, "Searching Receiver...")
+            while (isActive && !_isTransportConnected.value) {
+                val result = DiscoverySender.discoverReceiver(
+                    buildClientFeatures(
+                        enableRumble = GlobalConfig.ENABLE_RUMBLE.boolean,
+                        showLatency = true // important to show receiver status
+                    )
                 )
-            )
 
-            if (result != null && result.host != null) {
-                transport = TransportManager(result.host, result.port, onLatencyStatsReceive)
-                Log.i("DISCOVERED:", "$result.host, $result.port, features:${result.features}, agreedVersion:${result.agreedVersion}")
-                if (result.agreedVersion < DiscoverySender.MIN_SUPPORTED_VERSION) {
-                    withContext(Dispatchers.Main) {
-                        AlertDialogQueue.show(
-                            AppDialog.Message(
-                                title = "Receiver Update Required",
-                                message = "This receiver version is not supported anymore.\n\nPlease update the receiver on your PC."
+                if (result != null && result.host != null) {
+                    Log.i(LOG_TAG, "DISCOVERED: ${result.host}, ${result.port}, features:${result.features}, agreedVersion:${result.agreedVersion}")
+
+                    if (result.agreedVersion < DiscoverySender.MIN_SUPPORTED_VERSION) {
+                        withContext(Dispatchers.Main) {
+                            AlertDialogQueue.show(
+                                AppDialog.Message(
+                                    title = "Receiver Update Required",
+                                    message = "This receiver version is not supported anymore.\n\nPlease update the receiver on your PC."
+                                )
                             )
-                        )
+                        }
+                        break
                     }
-                    return@launch
+
+                    transport = TransportManager(result.host, result.port, onLatencyStatsReceive)
+                    _isTransportConnected.value = true
+                    transport!!.start()
+                    Log.i(LOG_TAG, "Successfully connected")
+                    break
                 }
-                _isTransportConnected.value = true
-                transport!!.start()
-                Log.i(LOG_TAG, "Successfully connected")
-            } else {
-                searchReceiver()
+            }
+        }
+    }
+
+    private fun observeReceiverState() {
+        receiverJob?.cancel()
+        receiverJob = viewModelScope.launch {
+            while (isActive) {
+                val active = transport?.isReceiverActive() == true
+
+                if (_isReceiverActive.value != active) {
+                    _isReceiverActive.value = active
+
+                    if (!active && _isTransportConnected.value) {
+                        Log.i(LOG_TAG, "Receiver lost! Tearing down and restarting discovery...")
+                        transport?.stop()
+                        transport = null
+                        _isTransportConnected.value = false
+                        searchReceiver()
+                    }
+                }
+
+                delay(500.milliseconds)
             }
         }
     }
 
     private fun observeFeatures() {
         viewModelScope.launch {
-            combine(
-                GlobalConfig.enableRumbleFlow
-            ) { enableRumble ->
-                enableRumble
-            }
+            GlobalConfig.enableRumbleFlow
                 .distinctUntilChanged()
-                .collect { (enableRumble) ->
-                    val result = DiscoverySender.discoverReceiver(
-                        buildClientFeatures(
-                            enableRumble = enableRumble,
-                            showLatency = true // important to show receiver status
+                .collect { enableRumble ->
+                    if (_isTransportConnected.value) {
+                        val result = DiscoverySender.discoverReceiver(
+                            buildClientFeatures(
+                                enableRumble = enableRumble,
+                                showLatency = true
+                            )
                         )
-                    )
-
-                    Log.i(LOG_TAG, "Features updated: ${result?.features}")
+                        Log.i(LOG_TAG, "Features updated dynamically: ${result?.features}")
+                    }
                 }
         }
     }
 
     override fun onCleared() {
+        searchJob?.cancel()
+        receiverJob?.cancel()
         transport?.stop()
     }
 }
