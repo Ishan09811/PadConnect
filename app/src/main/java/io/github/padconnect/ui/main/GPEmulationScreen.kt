@@ -284,7 +284,17 @@ fun GPEmulationScreen(
                     transport = viewModel.transport,
                     screenWidth = maxWidth,
                     screenHeight = maxHeight,
-                    controlPointers
+                    controlPointers = controlPointers,
+                    isEditMode = isEditMode,
+                    isSelected = selectedElementId == element.id,
+                    onSelect = {
+                        selectedElementId = element.id
+                    },
+                    onUpdate = { updated ->
+                        eLayout = eLayout.updateElement(updated.id) {
+                            updated
+                        }
+                    }
                 )
             }
         }
@@ -410,9 +420,7 @@ fun GamepadButton(
             .background(
                 when {
                     !button.enabled -> Color.White.copy(alpha = 0.05f)
-
                     !isPressed -> Color.White.copy(alpha = 0.3f)
-
                     else -> Color.Transparent
                 },
                 CircleShape
@@ -490,11 +498,32 @@ fun AnalogStick(
     transport: TransportManager?,
     screenWidth: Dp,
     screenHeight: Dp,
-    controlPointers: MutableSet<PointerId>
+    controlPointers: MutableSet<PointerId>,
+    isEditMode: Boolean = false,
+    isSelected: Boolean = false,
+    onSelect: () -> Unit = {},
+    onUpdate: (AnalogStickElement) -> Unit = {}
 ) {
+    val density = LocalDensity.current
+    val screenWidthPx = with(density) { screenWidth.toPx() }
+    val screenHeightPx = with(density) { screenHeight.toPx() }
+
     val sizeDp = screenWidth * dpad.size
-    val sizePx = with(LocalDensity.current) { sizeDp.toPx() }
+    val sizePx = screenWidthPx * dpad.size
     val radius = sizePx / 2f
+
+    val latestDpad by rememberUpdatedState(dpad)
+
+    var localX by remember(dpad.id) { mutableFloatStateOf(dpad.x) }
+    var localY by remember(dpad.id) { mutableFloatStateOf(dpad.y) }
+    var isDragging by remember { mutableStateOf(false) }
+
+    LaunchedEffect(dpad.x, dpad.y) {
+        if (!isDragging) {
+            localX = dpad.x
+            localY = dpad.y
+        }
+    }
 
     var knobOffset by remember { mutableStateOf(Offset.Zero) }
     var activePointer by remember { mutableStateOf<PointerId?>(null) }
@@ -502,12 +531,66 @@ fun AnalogStick(
     Box(
         modifier = Modifier
             .offset(
-                x = screenWidth * dpad.x - sizeDp / 2,
-                y = screenHeight * dpad.y - sizeDp / 2
+                x = screenWidth * localX - sizeDp / 2,
+                y = screenHeight * localY - sizeDp / 2
             )
             .size(sizeDp)
             .graphicsLayer { alpha = dpad.opacity }
+            .background(
+                when {
+                    !dpad.enabled -> Color.White.copy(alpha = 0.05f)
+                    else -> Color.Transparent
+                },
+                CircleShape
+            )
+            .border(
+                width = when {
+                    isSelected -> 2.dp
+                    !dpad.enabled -> 1.dp
+                    else -> 0.dp
+                },
+                color = when {
+                    isSelected -> Color.Cyan
+                    !dpad.enabled -> Color.White.copy(alpha = 0.25f)
+                    else -> Color.Transparent
+                },
+                shape = CircleShape
+            )
+            .visible(if (!isEditMode) dpad.enabled else true)
+            .pointerInput(isEditMode) {
+                if (!isEditMode) return@pointerInput
+                detectTapGestures(
+                    onTap = { onSelect() }
+                )
+            }
+            .pointerInput(isEditMode, dpad.enabled) {
+                if (!isEditMode || !dpad.enabled) return@pointerInput
+                detectDragGestures(
+                    onDragStart = {
+                        isDragging = true
+                        onSelect()
+                    },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        localX = (localX + dragAmount.x / screenWidthPx).coerceIn(0f, 1f)
+                        localY = (localY + dragAmount.y / screenHeightPx).coerceIn(0f, 1f)
+                    },
+                    onDragEnd = {
+                        isDragging = false
+                        onUpdate(
+                            latestDpad.copy(
+                                x = localX,
+                                y = localY
+                            )
+                        )
+                    },
+                    onDragCancel = {
+                        isDragging = false
+                    }
+                )
+            }
             .pointerInput(Unit) {
+                if (isEditMode) return@pointerInput
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent()
