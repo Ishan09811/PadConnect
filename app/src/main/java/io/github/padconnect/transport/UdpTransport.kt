@@ -20,6 +20,7 @@ import java.nio.BufferUnderflowException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.locks.LockSupport
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 class UdpTransport(
@@ -37,7 +38,7 @@ class UdpTransport(
     private val state = GamepadState()
 
     @Volatile
-    private var isRunning = true
+    private var isRunning = false
 
     private val hapticHandler = HapticHandler()
 
@@ -51,10 +52,15 @@ class UdpTransport(
         private const val TRIGGER_PRESSED: Byte = 100
         private const val TRIGGER_RELEASED: Byte = 0
         private const val RECEIVER_TIMEOUT_MS = 2000L
+
+        private const val MAX_CONSECUTIVE_ERRORS_BEFORE_REST = 3
+        private const val BASE_REST_MS = 10L
+        private const val MAX_REST_MS = 200L
     }
 
     private val senderThread = Thread {
         var next = System.nanoTime()
+        var consecutiveErrors = 0
 
         Log.i(LOG_TAG, "senderThread Started")
         while (isRunning) {
@@ -76,8 +82,16 @@ class UdpTransport(
 
             try {
                 socket.send(packet)
+                consecutiveErrors = 0
             } catch (_: IOException) {
                 if (!isRunning) break
+
+                consecutiveErrors++
+                if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS_BEFORE_REST) {
+                    val restMs = min(BASE_REST_MS * (1 shl (consecutiveErrors - MAX_CONSECUTIVE_ERRORS_BEFORE_REST)), MAX_REST_MS)
+                    LockSupport.parkNanos(restMs * 1_000_000L)
+                }
+
                 next = System.nanoTime()
                 continue
             }
@@ -95,14 +109,22 @@ class UdpTransport(
     private val ioThread = Thread {
         val buffer = ByteArray(RECV_BUFFER_SIZE)
         val packet = DatagramPacket(buffer, buffer.size)
+        var consecutiveErrors = 0
 
         Log.i("UdpTransport:", "ioThread Started")
 
         while (isRunning && !socket.isClosed) {
             try {
                 socket.receive(packet)
+                consecutiveErrors = 0
             } catch (_: IOException) {
                 if (!isRunning) break
+
+                consecutiveErrors++
+                if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS_BEFORE_REST) {
+                    val restMs = min(BASE_REST_MS * (1 shl (consecutiveErrors - MAX_CONSECUTIVE_ERRORS_BEFORE_REST)), MAX_REST_MS)
+                    LockSupport.parkNanos(restMs * 1_000_000L)
+                }
                 continue
             }
 
@@ -153,6 +175,8 @@ class UdpTransport(
         if (!isRunning) return
         isRunning = false
         socket.close()
+        LockSupport.unpark(senderThread)
+        LockSupport.unpark(ioThread)
         senderThread.join(1000)
         ioThread.join(1000)
         Log.i(LOG_TAG, "Stopped")
