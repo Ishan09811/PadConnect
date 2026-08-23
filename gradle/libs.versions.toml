@@ -15,8 +15,6 @@ navigationRuntimeKtx = "2.9.8"
 profileinstaller = "1.4.1"
 materialSwitch = "1.0.1"
 uiTextGoogleFonts = "1.11.4"
-uiautomator = "2.4.0"
-benchmarkMacroJunit4 = "1.4.1"
 baselineprofile = "1.4.1"
 
 [libraries]
@@ -43,15 +41,11 @@ androidx-navigation-runtime-ktx = { group = "androidx.navigation", name = "navig
 androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime" }
 com-github-ishan09811-materialswitch = { group = "com.github.Ishan09811", name = "materialswitch", version.ref = "materialSwitch" }
 androidx-compose-ui-text-google-fonts = { group = "androidx.compose.ui", name = "ui-text-google-fonts", version.ref = "uiTextGoogleFonts" }
-androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
-androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "benchmarkMacroJunit4" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 android-test = { id = "com.android.test", version.ref = "agp" }
-baselineprofile = { id = "androidx.baselineprofile", version.ref = "baselineprofile" }
 

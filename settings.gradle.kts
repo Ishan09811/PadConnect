@@ -25,4 +25,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "PadConnect"
 include(":app")
-include(":baselineprofile")

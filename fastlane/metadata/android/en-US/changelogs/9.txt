@@ -1,0 +1,9 @@
+- update dependencies
+- Refactor UdpTransport
+- dont show nullms if latency indicator turned off and fix receiver status not showing when enabling latency indicator
+- add support for resetting controller layout customisations
+- add support for editing entire osc(On-Screen Controller) at once
+- Fix discovery on mobile hotspot
+- add support for customizing analog stick
+- UdpTransport: remove unnecessary wifi availablity check
+- fix receiver status not working when closing the receiver app and opening again
