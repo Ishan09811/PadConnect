@@ -13,7 +13,7 @@ kotlinxSerializationJson = "1.11.0"
 navigationCompose = "2.10.0"
 navigationRuntimeKtx = "2.10.0"
 profileinstaller = "1.4.1"
-materialSwitch = "1.0.1"
+materialSwitch = "1.0.3"
 material3 = "1.4.0"
 uiTextGoogleFonts = "1.12.0"
 
