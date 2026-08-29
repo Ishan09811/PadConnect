@@ -190,7 +190,7 @@ fun SetupScreen(viewModel: GPEmulationViewModel? = null, navigateTo: ((String) -
                         },
                         enabled = currentStep < steps.lastIndex
                     ) {
-                        Icon(painter = painterResource(com.github.ishan09811.compose_preferences.R.drawable.ic_keyboard_arrow_right), contentDescription = "Next")
+                        Icon(painter = painterResource(io.github.compose_preferences.R.drawable.ic_keyboard_arrow_right), contentDescription = "Next")
                     }
                 }
             }

@@ -229,5 +229,5 @@ enum class AppDestinations(
     val icon: Int,
 ) {
     HOME("Layouts", R.drawable.ic_home),
-    SETTINGS("Settings", com.github.ishan09811.compose_preferences.R.drawable.ic_settings),
+    SETTINGS("Settings", io.github.compose_preferences.R.drawable.ic_settings),
 }

@@ -34,11 +34,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.github.ishan09811.compose_preferences.core.PreferenceSubtitle
-import com.github.ishan09811.compose_preferences.preference.HomePreference
-import com.github.ishan09811.compose_preferences.preference.RegularPreference
-import com.github.ishan09811.compose_preferences.preference.SingleSelectionDialog
-import com.github.ishan09811.compose_preferences.preference.SwitchPreference
+import io.github.compose_preferences.core.PreferenceSubtitle
+import io.github.compose_preferences.preference.HomePreference
+import io.github.compose_preferences.preference.RegularPreference
+import io.github.compose_preferences.preference.SingleSelectionDialog
+import io.github.compose_preferences.preference.SwitchPreference
 import io.github.padconnect.R
 import io.github.padconnect.utils.settings.GlobalConfig
 

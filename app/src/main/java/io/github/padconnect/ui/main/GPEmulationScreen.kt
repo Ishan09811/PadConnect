@@ -71,7 +71,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.github.ishan09811.materialswitch.MaterialSwitch
+import io.github.materialswitch.MaterialSwitch
 import io.github.padconnect.R
 import io.github.padconnect.dialogs.AlertDialogQueue
 import io.github.padconnect.dialogs.AppDialog
